@@ -5,10 +5,16 @@ import * as environment from '../common/environment';
 
 export class RunPSL extends HostCommand {
 
-	envType = EnvType.Mutli;
-	icon: string = HostCommand.icons.RUN;
-
 	static readonly COMMAND = 'psl.runPSL';
+
+	envType: EnvType; 
+	icon: string;
+
+	constructor() {
+		super();
+		this.envType = EnvType.Mutli;
+		this.icon = HostCommand.icons.RUN;
+	}
 
 	async dirHandle(directory: string): Promise<string[]> | undefined {
 		let options = {
@@ -24,11 +30,11 @@ export class RunPSL extends HostCommand {
 	async execute(file: string, env: environment.EnvironmentConfig): Promise<CommandResult[]> {
 		let results: CommandResult[];
 		await executeWithProgress(`${path.basename(file)} RUN`, async () => {
-			HostCommand.logger.info(`${HostCommand.icons.WAIT} ${this.icon} ${path.basename(file)} RUN in ${env.name}`);
+			this.logWait(`${path.basename(file)} RUN in ${env.name}`);
 			let connection = await getConnection(env);
 			let output = await connection.run(file);
 			connection.close();
-			HostCommand.logger.info(output.trim());
+			this.logSuccess(`${path.basename(file)} RUN in ${env.name} succeeded\n${output.trim()}`);
 		});
 		return results;
 	}

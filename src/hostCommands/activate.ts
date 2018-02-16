@@ -3,13 +3,13 @@ import * as path from 'path';
 
 import { commands, ExtensionContext, TextEditor, window } from 'vscode';
 import { getElementHandler, getTableHandler } from './get';
-import { refreshElementHandler, refreshTableHandler } from './refresh';
+import { refreshTableHandler } from './refresh';
 import { testCompileHandler } from './testCompile';
 import { compileAndLinkHandler } from './compileAndLink';
-import { sendElementHandler, sendTableHandler } from './send';
-import { runPSLHandler } from './run';
+import { sendTableHandler } from './send';
 import { RunPSL } from './run2';
 import { Refresh } from './refresh2';
+import { Send } from './send2';
 
 const PROFILE_ELEMENTS = [
 	'.FKY',
@@ -36,9 +36,10 @@ export function activate(context: ExtensionContext) {
 
 	registerProfileElementContext();
 
-	const COMMANDS_CLASSES = [RunPSL, Refresh];
+	const COMMANDS_CLASSES = [RunPSL, Refresh, Send];
+
 	for (let Command of COMMANDS_CLASSES) {
-		const command = new Command();
+		let command = new Command();
 		context.subscriptions.push(
 			vscode.commands.registerCommand(
 				Command.COMMAND, command.handle, command
@@ -57,13 +58,7 @@ export function activate(context: ExtensionContext) {
 			'psl.getTable', getTableHandler
 		)
 	);
-	
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			'psl.sendElement', sendElementHandler
-		)
-	);
-	
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
 			'psl.testCompile', testCompileHandler
@@ -72,13 +67,6 @@ export function activate(context: ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
 			'psl.compileAndLink', compileAndLinkHandler
-		)
-	);
-
-
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			'psl.hostCommandDialog', hostCommandHandler
 		)
 	);
 
@@ -132,23 +120,6 @@ export function activate(context: ExtensionContext) {
 // 		}
 // 	}
 // }
-
-export async function hostCommandHandler() {
-	let choice = await vscode.window.showQuickPick([
-		{label: `$(sync)\tRefresh from Host`, description: '', handler: refreshElementHandler},
-		{label: `$(arrow-down)\tGet from Host`, description: '', handler: getElementHandler},
-		{label: `$(database)\tTable Get from Host`, description: '', handler: getTableHandler},
-		{label: `$(arrow-up)\tSend to Host`, description: '', handler: sendElementHandler},
-		{label: `$(link)\tCompile and Link`, description: '', handler: compileAndLinkHandler},
-		{label: `$(gear)\tTest Compile`, description: '', handler: testCompileHandler},
-		{label: `$(triangle-right)\tRun PSL`, description: '', handler: runPSLHandler}
-		// {label: `$(ellipsis)\tTest Send Link`, description: '', handler: testSendLinkHandler},
-	], {
-		placeHolder: 'Select a command to open a dialog'
-	});
-	if (!choice) return;
-	choice.handler({dialog: true, fsPath: ''});
-}
 
 function registerProfileElementContext() {
 	if (window.activeTextEditor) setIsProfileElementContext(window.activeTextEditor)
