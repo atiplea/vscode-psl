@@ -8,6 +8,8 @@ import { testCompileHandler } from './testCompile';
 import { compileAndLinkHandler } from './compileAndLink';
 import { sendElementHandler, sendTableHandler } from './send';
 import { runPSLHandler } from './run';
+import { RunPSL } from './run2';
+import { Refresh } from './refresh2';
 
 const PROFILE_ELEMENTS = [
 	'.FKY',
@@ -34,6 +36,16 @@ export function activate(context: ExtensionContext) {
 
 	registerProfileElementContext();
 
+	const COMMANDS_CLASSES = [RunPSL, Refresh];
+	for (let Command of COMMANDS_CLASSES) {
+		const command = new Command();
+		context.subscriptions.push(
+			vscode.commands.registerCommand(
+				Command.COMMAND, command.handle, command
+			)
+		);
+	}
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
 			'psl.getElement', getElementHandler
@@ -45,19 +57,13 @@ export function activate(context: ExtensionContext) {
 			'psl.getTable', getTableHandler
 		)
 	);
-
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			'psl.refreshElement', refreshElementHandler
-		)
-	);
-
+	
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
 			'psl.sendElement', sendElementHandler
 		)
 	);
-
+	
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
 			'psl.testCompile', testCompileHandler
@@ -69,11 +75,6 @@ export function activate(context: ExtensionContext) {
 		)
 	);
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			'psl.runPSL', runPSLHandler
-		)
-	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(

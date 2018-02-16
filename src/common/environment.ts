@@ -106,7 +106,7 @@ async function environmentQuickPick(workspaceFile: WorkspaceFile) {
 	}
 	catch (e) {
 		if (e === GlobalFile.INVALID_CONFIG) {
-				await GlobalFile.show();
+			await GlobalFile.show();
 		}
 		else {
 			
