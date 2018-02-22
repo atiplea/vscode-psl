@@ -6,15 +6,15 @@ import * as environment from '../common/environment';
 
 export class Refresh extends HostCommand {
 
-	static readonly COMMAND = 'psl.refreshElement';
-
-	envType: EnvType;
 	icon: string;
+	envType: EnvType;
+	command: string;
 
 	constructor() {
 		super();
 		this.envType = EnvType.Single;
 		this.icon = HostCommand.icons.REFRESH;
+		this.command = 'psl.refreshElement';
 	}
 
 	async dirHandle(directory: string): Promise<string[]> | undefined {

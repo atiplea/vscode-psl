@@ -1,86 +1,60 @@
-import * as vscode from 'vscode';
-import * as utils from './hostCommandUtils';
-import * as path from 'path';
-import * as fs from 'fs-extra';
 import { PSLDiagnostic } from '../common/diagnostics';
-import * as extension from '../extension';
+
+import * as vscode from 'vscode';
+import { HostCommand, CommandResult, getConnection, executeWithProgress, EnvType } from './hostCommand';
+import * as path from 'path';
 import * as environment from '../common/environment';
 
-const icon = utils.icons.TEST;
+export class TestCompile extends HostCommand {
 
-export async function testCompileHandler(context: utils.ExtensionCommandContext): Promise<void> {
-	let c = utils.getFullContext(context);
-	let diagnostics = []
-	if (c.mode === utils.ContextMode.FILE) {
-		await testCompile(c.fsPath).catch(() => { });
-	}
-	else if (c.mode === utils.ContextMode.DIRECTORY) {
-		let files = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(c.fsPath), canSelectMany: true, openLabel: 'Test Compile' })
-		if (!files) return;
-		for (let fsPath of files.map(file => file.fsPath)) {
-			let result = await testCompile(fsPath).catch(() => { });
-			if (result) diagnostics = diagnostics.concat(result);
-		}
-	}
-	else {
-		let quickPick = await environment.workspaceQuickPick();
-		if (!quickPick) return;
-		let chosenEnv = quickPick;
-		let files = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(chosenEnv.fsPath), canSelectMany: true, openLabel: 'Test Compile' })
-		if (!files) return;
-		for (let fsPath of files.map(file => file.fsPath)) {
-			let result = await testCompile(fsPath);
-			if (result) diagnostics = diagnostics.concat(result);
-		}
-	}
-}
+	icon: string;
+	envType: EnvType;
+	command: string;
 
-export async function testCompile(fsPath: string) {
-	// TODO check if testCompile-able?
-	if (!fs.statSync(fsPath).isFile()) return;
-	let textDocument = await vscode.workspace.openTextDocument(fsPath);
-	if (!vscode.languages.match(extension.PSL_MODE, textDocument)) return;
+	constructor() {
+		super();
+		this.envType = EnvType.Mutli;
+		this.icon = HostCommand.icons.TEST;
+		this.command = 'psl.testCompile';
+	}
 
-	let testCompileSucceeded = false;
-	let envs;
-	try {
-		envs = await utils.getEnvironment(fsPath);
+	async dirHandle(directory: string): Promise<string[]> | undefined {
+		let options = {
+			defaultUri: vscode.Uri.file(directory),
+			canSelectMany: true,
+			openLabel: 'Test Compile'
+		};
+		let uris = await vscode.window.showOpenDialog(options)
+		if (!uris) return;
+		return uris.map(uri => uri.fsPath);
 	}
-	catch (e) {
-		utils.logger.error(`${utils.icons.ERROR} ${icon} Invalid environment configuration.`);
-		return;
-	}
-	if (envs.length === 0) {
-		utils.logger.error(`${utils.icons.ERROR} ${icon} No environments selected.`);
-		return;
-	}
-	let testCompiles: Promise<void>[] = [];
-	for (let env of envs) {
-		testCompiles.push(utils.executeWithProgress(`${icon} ${path.basename(fsPath)} TEST COMPILE`, async () => {
-			await textDocument.save();
-			utils.logger.info(`${utils.icons.WAIT} ${icon} ${path.basename(fsPath)} TEST COMPILE in ${env.name}`);
-			let connection = await utils.getConnection(env);
-			let output = await connection.test(fsPath);
+
+	async execute(file: string, env: environment.EnvironmentConfig): Promise<CommandResult[]> {
+		let results: CommandResult[];
+		await executeWithProgress(`${path.basename(file)} TEST COMPILE`, async () => {
+			this.logWait(`${path.basename(file)} TEST COMPILE in ${env.name}`);
+			let connection = await getConnection(env);
+			let output = await connection.test(file);
 			connection.close();
+			let textDocument = await vscode.workspace.openTextDocument(file);
 			let pslDiagnostics = parseCompilerOutput(output, textDocument);
-			testCompileSucceeded = pslDiagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error).length === 0;
+			let testCompileSucceeded = pslDiagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error).length === 0;
 			let testCompileWarning = pslDiagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning).length > 0;
 			if (!testCompileSucceeded) {
-				output = `${utils.icons.ERROR} ${icon} ${path.basename(fsPath)} TEST COMPILE in ${env.name} failed\n` + output
+				this.logError(`${path.basename(file)} TEST COMPILE in ${env.name} failed` + ('\n'+output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			else if (testCompileWarning) {
-				output = `${utils.icons.WARN} ${icon} ${path.basename(fsPath)} TEST COMPILE in ${env.name} succeeded with warning\n` + output
+				this.logWait(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded with warning` + ('\n'+output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			else {
-				output = `${utils.icons.SUCCESS} ${icon} ${path.basename(fsPath)} TEST COMPILE in ${env.name} succeeded\n` + output
+				this.logSuccess(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded` + ('\n'+output).split('\n').join('\n' + ' '.repeat(20)))
 			}
-			utils.logger.info(output.split('\n').join('\n' + ' '.repeat(20)));
-			PSLDiagnostic.setDiagnostics(pslDiagnostics, env.name, fsPath);
-		}).catch((e: Error) => {
-			utils.logger.error(`${utils.icons.ERROR} ${icon} error in ${env.name} ${e.message}`);
-		}))
+			PSLDiagnostic.setDiagnostics(pslDiagnostics, env.name, file);
+		});
+		return results;
 	}
 }
+
 
 function parseCompilerOutput(compilerOutput: string, document: vscode.TextDocument): PSLDiagnostic[] {
 	/*
@@ -105,7 +79,9 @@ function parseCompilerOutput(compilerOutput: string, document: vscode.TextDocume
 	outputArrays.slice(0, outputArrays.length - 1).forEach(pslCompilerMessage => {
 
 		let lineNumber: number = pslCompilerMessage.getLineNumber();
-		if (lineNumber - 1 > document.lineCount || lineNumber <= 0) return;
+		if (lineNumber - 1 > document.lineCount || lineNumber <= 0) {
+			lineNumber = 1;
+		}
 
 		let codeLine: string = document.lineAt(lineNumber - 1).text;
 		let startIndex: number = codeLine.search(/\S/); // returns the index of the first non-whitespace character

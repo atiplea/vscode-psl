@@ -12,7 +12,7 @@ export enum EnvType {
 
 export abstract class HostCommand {
 
-	static outputChannel = vscode.window.createOutputChannel('Profile Host');
+	protected static outputChannel = vscode.window.createOutputChannel('Profile Host');
 
 	private static logger = {
 		info: (message: string) => {
@@ -25,7 +25,7 @@ export abstract class HostCommand {
 		}
 	}
 
-	static icons = {
+	protected static icons = {
 		ERROR: '✖',
 		GET: '⇩',
 		LINK: '🔗',
@@ -38,30 +38,31 @@ export abstract class HostCommand {
 		WARN: '⚠',
 	}
 
-	abstract icon: string;
-	abstract envType: EnvType;
+	protected abstract icon: string;
+	protected abstract envType: EnvType;
+	protected abstract command: string;
 
-	async abstract dirHandle(directory: string): Promise<string[]> | undefined;
-	async abstract execute(file: string, env: EnvironmentConfig): Promise<CommandResult[]>;
+	protected async abstract dirHandle(directory: string): Promise<string[]> | undefined;
+	protected async abstract execute(file: string, env: EnvironmentConfig): Promise<CommandResult[]>;
 
-	logWait(message: string) {
+	protected logWait(message: string) {
 		HostCommand.logger.info(`${HostCommand.icons.WAIT} ${this.icon} ${message}`);
 	}
 
-	logSuccess(message: string) {
+	protected logSuccess(message: string) {
 		HostCommand.logger.info(`${HostCommand.icons.SUCCESS} ${this.icon} ${message}`);
 	}
 
-	logWarn(message: string) {
+	protected logWarn(message: string) {
 		HostCommand.logger.info(`${HostCommand.icons.WARN} ${this.icon} ${message}`);
 	}
 
-	logError(message: string) {
+	protected logError(message: string) {
 		HostCommand.logger.error(`${HostCommand.icons.ERROR} ${this.icon} ${message}`);
 	}
 
 
-	async handle(context: ExtensionCommandContext, args: any[]) {
+	public async handle(context: ExtensionCommandContext, args: any[]) {
 		const c = getFullContext(context, args);
 		let files: string[];
 

@@ -6,15 +6,15 @@ import * as environment from '../common/environment';
 
 export class Get extends HostCommand {
 
-	static readonly COMMAND = 'psl.getElement';
-
-	envType: EnvType;
 	icon: string;
+	envType: EnvType;
+	command: string;
 
 	constructor() {
 		super();
 		this.envType = EnvType.Single;
 		this.icon = HostCommand.icons.GET;
+		this.command = 'psl.getElement';
 	}
 
 	async dirHandle(directory: string): Promise<string[]> | undefined {

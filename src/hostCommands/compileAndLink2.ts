@@ -3,7 +3,7 @@ import { HostCommand, CommandResult, getConnection, executeWithProgress, EnvType
 import * as path from 'path';
 import * as environment from '../common/environment';
 
-export class Send extends HostCommand {
+export class CompileAndLink extends HostCommand {
 
 	icon: string;
 	envType: EnvType;
@@ -12,15 +12,15 @@ export class Send extends HostCommand {
 	constructor() {
 		super();
 		this.envType = EnvType.Mutli;
-		this.icon = HostCommand.icons.SEND;
-		this.command = 'psl.sendElement';
+		this.icon = HostCommand.icons.LINK;
+		this.command = 'psl.compileAndLink';
 	}
 
 	async dirHandle(directory: string): Promise<string[]> | undefined {
 		let options = {
 			defaultUri: vscode.Uri.file(directory),
 			canSelectMany: true,
-			openLabel: 'Send'
+			openLabel: 'Compile and Link'
 		};
 		let uris = await vscode.window.showOpenDialog(options)
 		if (!uris) return;
@@ -29,12 +29,12 @@ export class Send extends HostCommand {
 
 	async execute(file: string, env: environment.EnvironmentConfig): Promise<CommandResult[]> {
 		let results: CommandResult[];
-		await executeWithProgress(`${path.basename(file)} SEND`, async () => {
-			this.logWait(`${path.basename(file)} SEND to ${env.name}`);
+		await executeWithProgress(`${path.basename(file)} COMPILE AND LINK`, async () => {
+			this.logWait(`${path.basename(file)} COMPILE AND LINK in ${env.name}`);
 			let connection = await getConnection(env);
-			await connection.send(file);
+			let output = await connection.complink(file);
 			connection.close();
-			this.logSuccess(`${path.basename(file)} SEND to ${env.name} succeeded`);
+			this.logSuccess(`${path.basename(file)} COMPILE AND LINK in ${env.name} succeeded\n${output.trim()}`);
 		});
 		return results;
 	}

@@ -5,15 +5,15 @@ import * as environment from '../common/environment';
 
 export class RunPSL extends HostCommand {
 
-	static readonly COMMAND = 'psl.runPSL';
-
-	envType: EnvType; 
 	icon: string;
+	envType: EnvType;
+	command: string;
 
 	constructor() {
 		super();
 		this.envType = EnvType.Mutli;
 		this.icon = HostCommand.icons.RUN;
+		this.command = 'psl.runPSL';
 	}
 
 	async dirHandle(directory: string): Promise<string[]> | undefined {
