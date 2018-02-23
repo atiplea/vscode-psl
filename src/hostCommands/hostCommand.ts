@@ -5,11 +5,6 @@ export { extensionToDescription } from '../mtm/utils';
 import { LaunchQuickPick, WorkspaceFile, workspaceQuickPick, EnvironmentConfig } from '../common/environment';
 import { MtmConnection } from '../mtm/mtm';
 
-export enum EnvType {
-	Single = 1,
-	Mutli = 2,
-}
-
 export abstract class HostCommand {
 
 	protected static outputChannel = vscode.window.createOutputChannel('Profile Host');
@@ -39,10 +34,8 @@ export abstract class HostCommand {
 	}
 
 	protected abstract icon: string;
-	protected abstract envType: EnvType;
 	protected abstract command: string;
 
-	protected async abstract dirHandle(directory: string): Promise<string[]> | undefined;
 	protected async abstract execute(file: string, env: EnvironmentConfig): Promise<CommandResult[]>;
 
 	protected logWait(message: string) {
@@ -61,24 +54,71 @@ export abstract class HostCommand {
 		HostCommand.logger.error(`${HostCommand.icons.ERROR} ${this.icon} ${message}`);
 	}
 
+	protected async saveDocument(file: string) {
+		await vscode.workspace.openTextDocument(file).then(doc => doc.save());
+	}
+
+	protected async filesHandle(files: string[]): Promise<string[]> {
+		return files;
+	}
+
+	protected async abstract dirHandle(directory: string): Promise<string[]> | undefined;
+
+	protected async emptyHandle(): Promise<string[]> {
+		let workspace = await workspaceQuickPick();
+		if (!workspace) return;
+		return this.dirHandle(workspace.fsPath);
+	}
+
+	abstract handleFiles(files: string[]);
 
 	public async handle(context: ExtensionCommandContext, args: any[]) {
 		const c = getFullContext(context, args);
 		let files: string[];
 
 		if (c.mode === ContextMode.FILES) {
-			files = c.files;
+			files = await this.filesHandle(c.files);
 		}
 		else if (c.mode === ContextMode.DIRECTORY) {
 			files = await this.dirHandle(c.files[0]);
-			if (!files || files.length === 0) return;
 		}
 		else {
-			let workspace = await workspaceQuickPick();
-			if (!workspace) return;
-			files = await this.dirHandle(workspace.fsPath)
+			files = await this.emptyHandle();
 		}
+		if (!files || files.length === 0) return;
 
+		this.handleFiles(files);
+	}
+
+}
+
+export abstract class DownloadCommand extends HostCommand {
+
+	async handleFiles(files: string[]) {
+		for (let file of files) {
+			let workspaceFile = new WorkspaceFile(file);
+			let envs: EnvironmentConfig[];
+			try {
+				envs = await workspaceFile.environmentObjects;
+			}
+			catch (error) {
+				console.log(error);
+			}
+
+			let env = await getCommandenvConfigQuickPick(envs, file);
+			if (!env) return;
+			this.execute(file, env).catch(error => {
+				this.logError(`${error} in ${env.name}`);
+			})
+		}
+	}
+}
+
+
+
+export abstract class UploadCommand extends HostCommand {
+
+	async handleFiles(files: string[]) {
 		for (let file of files) {
 			if (!fs.statSync(file).isFile()) return;
 			await vscode.workspace.openTextDocument(file).then(doc => doc.save());
@@ -91,25 +131,15 @@ export abstract class HostCommand {
 				console.log(error);
 			}
 
-			if (this.envType === EnvType.Single) {
-				let env = await getCommandenvConfigQuickPick(envs, file);
-				if (!env) return;
-				this.execute(file, env).catch(error => {
+			let promises = [];
+			for (let env of envs) {
+				promises.push(this.execute(file, env).catch(error => {
 					this.logError(`${error} in ${env.name}`);
-				})
+				}));
 			}
-			else if (this.envType === EnvType.Mutli) {
-				let promises = [];
-				for (let env of envs) {
-					promises.push(this.execute(file, env).catch(error => {
-						this.logError(`${error} in ${env.name}`);
-					}));
-				}
-				await Promise.all(promises);
-			}
+			await Promise.all(promises);
 		}
 	}
-
 }
 
 export interface CommandResult {
@@ -142,10 +172,10 @@ export function getFullContext(context: ExtensionCommandContext | undefined, arg
 	let files: string[] = [];
 	let mode: ContextMode;
 	let activeTextEditor = vscode.window.activeTextEditor;
-	if (args) {
+	if (args && args.length > 1) {
 		files = args.filter(a => fs.lstatSync(a.fsPath).isFile()).map(a => a.fsPath);
 		let mode = ContextMode.FILES;
-		return {files, mode};
+		return { files, mode };
 	}
 	if (context && context.dialog) {
 		mode = ContextMode.EMPTY;
@@ -191,7 +221,44 @@ export async function getCommandenvConfigQuickPick(envs: EnvironmentConfig[], fi
 		return { label: env.name, description: '', env: env };
 	})
 	if (items.length === 1) return items[0].env;
-	let choice = await vscode.window.showQuickPick(items, { placeHolder: `Select environment to get ${path.basename(file)} from.`, ignoreFocusOut: true});
+	let choice = await vscode.window.showQuickPick(items, { placeHolder: `Select environment to get ${path.basename(file)} from.`, ignoreFocusOut: true });
 	if (!choice) return undefined;
 	return choice.env
+}
+
+export async function promptUserForTable() {
+	let inputOptions: vscode.InputBoxOptions = {
+		prompt: 'Name of Table (no extension)',
+		validateInput: (value: string) => {
+			if (!value) return;
+			if (value.includes('.')) return 'Do not include the extension';
+		}
+	};
+	return vscode.window.showInputBox(inputOptions);
+}
+
+export const DIR_MAPPINGS = {
+	'BATCH': 'dataqwik/batch',
+	'COL': '',
+	'DAT': 'data',
+	'FKY': 'dataqwik/foreign_key',
+	// 'G': 'Global',
+	'IDX': 'dataqwik/index',
+	'JFD': 'dataqwik/journal',
+	'm': 'routine',
+	'PPL': '',
+	'PROC': 'dataqwik/procedure',
+	'properties': 'property',
+	'PSL': '',
+	'psl': '',
+	'pslx': '',
+	'pslxtra': '',
+	'psql': '',
+	'QRY': 'dataqwik/query',
+	'RPT': 'dataqwik/report',
+	'SCR': 'dataqwik/screen',
+	// TABLE not supported
+	'TABLE': 'dataqwik/table',
+	'TBL': '',
+	'TRIG': 'dataqwik/trigger',
 }

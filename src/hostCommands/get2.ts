@@ -1,31 +1,43 @@
 import * as vscode from 'vscode';
-import { HostCommand, CommandResult, getConnection, executeWithProgress, EnvType } from './hostCommand';
+import { DownloadCommand, CommandResult, getConnection, executeWithProgress, DIR_MAPPINGS} from './hostCommand';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as environment from '../common/environment';
+import * as utils from './hostCommandUtils';
 
-export class Get extends HostCommand {
+export class Get extends DownloadCommand {
 
 	icon: string;
-	envType: EnvType;
 	command: string;
 
 	constructor() {
 		super();
-		this.envType = EnvType.Single;
-		this.icon = HostCommand.icons.GET;
+		this.icon = DownloadCommand.icons.GET;
 		this.command = 'psl.getElement';
 	}
 
+	async filesHandle(files: string[]) {
+		let workspace: vscode.WorkspaceFolder;
+		if (files.length === 1) {
+			workspace = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(files[0]));
+			if (!workspace) return;
+		}
+		else {
+			return this.emptyHandle();
+		}
+		return this.getFileFromPrompt(workspace.uri.fsPath)
+	}
+
 	async dirHandle(directory: string): Promise<string[]> | undefined {
-		let options = {
-			defaultUri: vscode.Uri.file(directory),
-			canSelectMany: true,
-			openLabel: 'Get'
-		};
-		let uris = await vscode.window.showOpenDialog(options)
-		if (!uris) return;
-		return uris.map(uri => uri.fsPath);
+		let input = await promptUserForComponent();
+		if (!input) return;
+		return [path.join(directory,input)];
+	}
+
+	async emptyHandle() {
+		let chosenWorkspace = await environment.workspaceQuickPick();
+		if (!chosenWorkspace) return;
+		return this.getFileFromPrompt(chosenWorkspace.fsPath);
 	}
 
 	async execute(file: string, env: environment.EnvironmentConfig): Promise<CommandResult[]> {
@@ -34,11 +46,45 @@ export class Get extends HostCommand {
 			this.logWait(`${path.basename(file)} GET from ${env.name}`);
 			let connection = await getConnection(env);
 			let output = await connection.get(file);
+			connection.close();
+			await fs.ensureFile(file);
 			await fs.writeFile(file, output);
 			this.logSuccess(`${path.basename(file)} GET from ${env.name} succeeded`);
-			connection.close();
 			await vscode.window.showTextDocument(vscode.Uri.file(file), { preview: false });
 		});
 		return results;
 	}
+
+	async getFileFromPrompt(workspaceDirectory: string) {
+		let input = await promptUserForComponent();
+		if (!input) return;
+		let extension = path.extname(input).replace('.', '');
+		let description = utils.extensionToDescription[extension]
+		let filters: { [name: string]: string[] } = {}
+		filters[description] = [extension]
+		let target
+		let defaultLocation = DIR_MAPPINGS[extension];
+		if (defaultLocation) {
+			target = { fsPath: path.join(workspaceDirectory, defaultLocation, input) }
+		}
+		else {
+			let defaultUri = vscode.Uri.file(path.join(workspaceDirectory, input))
+			target = await vscode.window.showSaveDialog({ defaultUri, filters: filters });
+		}
+		if (!target) return;
+		return [target.fsPath];
+
+	}
+}
+
+async function promptUserForComponent() {
+	let inputOptions: vscode.InputBoxOptions = {
+		prompt: 'Name of Component (with extension)', validateInput: (input: string) => {
+			if (!input) return;
+			let extension = path.extname(input) ? path.extname(input).replace('.', '') : 'No extension'
+			if (extension in utils.extensionToDescription) return '';
+			return `Invalid extension (${extension})`;
+		}
+	};
+	return vscode.window.showInputBox(inputOptions);
 }

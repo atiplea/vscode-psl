@@ -1,20 +1,18 @@
 import { PSLDiagnostic } from '../common/diagnostics';
 
 import * as vscode from 'vscode';
-import { HostCommand, CommandResult, getConnection, executeWithProgress, EnvType } from './hostCommand';
+import { UploadCommand, CommandResult, getConnection, executeWithProgress } from './hostCommand';
 import * as path from 'path';
 import * as environment from '../common/environment';
 
-export class TestCompile extends HostCommand {
+export class TestCompile extends UploadCommand {
 
 	icon: string;
-	envType: EnvType;
 	command: string;
 
 	constructor() {
 		super();
-		this.envType = EnvType.Mutli;
-		this.icon = HostCommand.icons.TEST;
+		this.icon = UploadCommand.icons.TEST;
 		this.command = 'psl.testCompile';
 	}
 

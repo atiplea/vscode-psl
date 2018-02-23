@@ -1,18 +1,16 @@
 import * as vscode from 'vscode';
-import { HostCommand, CommandResult, getConnection, executeWithProgress, EnvType } from './hostCommand';
+import { UploadCommand, CommandResult, getConnection, executeWithProgress } from './hostCommand';
 import * as path from 'path';
 import * as environment from '../common/environment';
 
-export class CompileAndLink extends HostCommand {
+export class CompileAndLink extends UploadCommand {
 
 	icon: string;
-	envType: EnvType;
 	command: string;
 
 	constructor() {
 		super();
-		this.envType = EnvType.Mutli;
-		this.icon = HostCommand.icons.LINK;
+		this.icon = UploadCommand.icons.LINK;
 		this.command = 'psl.compileAndLink';
 	}
 
@@ -30,6 +28,7 @@ export class CompileAndLink extends HostCommand {
 	async execute(file: string, env: environment.EnvironmentConfig): Promise<CommandResult[]> {
 		let results: CommandResult[];
 		await executeWithProgress(`${path.basename(file)} COMPILE AND LINK`, async () => {
+			await this.saveDocument(file);
 			this.logWait(`${path.basename(file)} COMPILE AND LINK in ${env.name}`);
 			let connection = await getConnection(env);
 			let output = await connection.complink(file);
