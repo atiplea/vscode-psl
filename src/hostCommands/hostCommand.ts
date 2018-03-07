@@ -58,19 +58,19 @@ export abstract class HostCommand {
 		await vscode.workspace.openTextDocument(file).then(doc => doc.save());
 	}
 
-	protected async filesHandle(files: string[]): Promise<string[]> {
+	protected async filesHandle(files: string[]): Promise<string[] | undefined> {
 		return files;
 	}
 
 	protected async abstract dirHandle(directory: string): Promise<string[]> | undefined;
 
-	protected async emptyHandle(): Promise<string[]> {
+	protected async emptyHandle(): Promise<string[]> | undefined {
 		let workspace = await workspaceQuickPick();
 		if (!workspace) return;
 		return this.dirHandle(workspace.fsPath);
 	}
 
-	abstract handleFiles(files: string[]);
+	abstract passToExecute(files: string[]);
 
 	public async handle(context: ExtensionCommandContext, args: any[]) {
 		const c = getFullContext(context, args);
@@ -87,14 +87,14 @@ export abstract class HostCommand {
 		}
 		if (!files || files.length === 0) return;
 
-		this.handleFiles(files);
+		this.passToExecute(files);
 	}
 
 }
 
 export abstract class DownloadCommand extends HostCommand {
 
-	async handleFiles(files: string[]) {
+	async passToExecute(files: string[]) {
 		for (let file of files) {
 			let workspaceFile = new WorkspaceFile(file);
 			let envs: EnvironmentConfig[];
@@ -118,27 +118,32 @@ export abstract class DownloadCommand extends HostCommand {
 
 export abstract class UploadCommand extends HostCommand {
 
-	async handleFiles(files: string[]) {
+	async passToExecute(files: string[]) {
+		let envMap: Map<EnvironmentConfig, string[]> = new Map();
 		for (let file of files) {
-			if (!fs.statSync(file).isFile()) return;
-			await vscode.workspace.openTextDocument(file).then(doc => doc.save());
 			let workspaceFile = new WorkspaceFile(file);
 			let envs: EnvironmentConfig[];
 			try {
 				envs = await workspaceFile.environmentObjects;
 			}
 			catch (error) {
-				console.log(error);
+				this.logError(error);
 			}
 
-			let promises = [];
 			for (let env of envs) {
-				promises.push(this.execute(file, env).catch(error => {
-					this.logError(`${error} in ${env.name}`);
-				}));
+				let envFiles = envMap.get(env);
+				if (!envFiles) envFiles = []
+				envMap.set(env, envFiles.concat(file));
 			}
-			await Promise.all(promises);
 		}
+
+		envMap.forEach(async (files, env) => {
+			for (let file of files) {
+				await this.execute(file, env).catch(error => {
+					this.logError(`${error} in ${env.name}`);
+				})
+			}
+		})
 	}
 }
 
