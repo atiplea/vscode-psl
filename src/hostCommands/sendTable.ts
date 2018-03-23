@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import {Send} from './send2';
+import {Send} from './send';
 import { UploadCommand } from './hostCommand';
 import * as path from 'path';
 import * as fs from 'fs-extra';

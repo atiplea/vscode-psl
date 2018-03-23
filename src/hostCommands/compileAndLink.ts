@@ -1,64 +1,40 @@
 import * as vscode from 'vscode';
+import { UploadCommand, CommandResult, getConnection, executeWithProgress } from './hostCommand';
 import * as path from 'path';
-import * as fs from 'fs-extra';
+import * as environment from '../common/environment';
 
-import * as utils from './hostCommandUtils';
-import * as environment from '../common/environment'
+export class CompileAndLink extends UploadCommand {
 
-const icon = utils.icons.LINK;
+	icon: string;
+	command: string;
 
-export async function compileAndLinkHandler(context: utils.ExtensionCommandContext): Promise<void> {
-	let c = utils.getFullContext(context);
-	if (c.mode === utils.ContextMode.FILE) {
-		return compileAndLink(c.fsPath).catch(() => { });
+	constructor() {
+		super();
+		this.icon = UploadCommand.icons.LINK;
+		this.command = 'psl.compileAndLink';
 	}
-	else if (c.mode === utils.ContextMode.DIRECTORY) {
-		let files = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(c.fsPath), canSelectMany: true, openLabel: 'Compile and Link' })
-		if (!files) return;
-		for (let fsPath of files.map(file => file.fsPath)) {
-			await compileAndLink(fsPath).catch(() => { });
-		}
-	}
-	else {
-		let quickPick = await environment.workspaceQuickPick();
-		if (!quickPick) return;
-		let chosenEnv = quickPick;
-		let files = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(chosenEnv.fsPath), canSelectMany: true, openLabel: 'Compile and Link' })
-		if (!files) return;
-		for (let fsPath of files.map(file => file.fsPath)) {
-			await compileAndLink(fsPath).catch(() => { });
-		}
-	}
-	return;
-}
 
-async function compileAndLink(fsPath: string) {
-	if (!fs.statSync(fsPath).isFile()) return
-	let envs;
-	try {
-		envs = await utils.getEnvironment(fsPath);
+	async dirHandle(directory: string): Promise<string[]> | undefined {
+		let options = {
+			defaultUri: vscode.Uri.file(directory),
+			canSelectMany: true,
+			openLabel: 'Compile and Link'
+		};
+		let uris = await vscode.window.showOpenDialog(options)
+		if (!uris) return;
+		return uris.map(uri => uri.fsPath);
 	}
-	catch (e) {
-		utils.logger.error(`${utils.icons.ERROR} ${icon} Invalid environment configuration.`);
-		return;
-	}
-	if (envs.length === 0) {
-		utils.logger.error(`${utils.icons.ERROR} ${icon} No environments selected.`);
-		return;
-	}
-	let promises = []
-	await vscode.workspace.openTextDocument(fsPath).then(doc => doc.save());
-	for (let env of envs) {
-		promises.push(utils.executeWithProgress(`${icon} ${path.basename(fsPath)} COMPILE AND LINK`, async () => {
-			utils.logger.info(`${utils.icons.WAIT} ${icon} ${path.basename(fsPath)} COMPILE AND LINK in ${env.name}`);
-			let connection = await utils.getConnection(env);
-			let output = await connection.complink(fsPath);
+
+	async execute(file: string, env: environment.EnvironmentConfig): Promise<CommandResult[]> {
+		let results: CommandResult[];
+		await executeWithProgress(`${path.basename(file)} COMPILE AND LINK`, async () => {
+			await this.saveDocument(file);
+			this.logWait(`${path.basename(file)} COMPILE AND LINK in ${env.name}`);
+			let connection = await getConnection(env);
+			let output = await connection.complink(file);
 			connection.close();
-			if (output.includes('compile and link successful')) utils.logger.info(`${utils.icons.SUCCESS} ${icon} ${path.basename(fsPath)} COMPILE AND LINK ${env.name} successful`)
-			else utils.logger.error(`${utils.icons.ERROR} ${icon} ${output}`);
-		}).catch((e: Error) => {
-			utils.logger.error(`${utils.icons.ERROR} ${icon} error in ${env.name} ${e.message}`);
-		}))
+			this.logSuccess(`${path.basename(file)} COMPILE AND LINK in ${env.name} succeeded\n${output.trim()}`);
+		});
+		return results;
 	}
-	await Promise.all(promises);
 }

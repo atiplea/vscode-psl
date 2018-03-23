@@ -2,12 +2,12 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 import { commands, ExtensionContext, TextEditor, window } from 'vscode';
-import { CompileAndLink } from './compileAndLink2';
-import { RunPSL } from './run2';
-import { Refresh } from './refresh2';
-import { Send } from './send2';
-import { TestCompile } from './testCompile2';
-import { Get } from './get2';
+import { CompileAndLink } from './compileAndLink';
+import { RunPSL } from './run';
+import { Refresh } from './refresh';
+import { Send } from './send';
+import { TestCompile } from './testCompile';
+import { Get } from './get';
 import { GetTable } from './getTable';
 import { RefreshTable } from './refreshTable';
 import { SendTable } from './sendTable';
