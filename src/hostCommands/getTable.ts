@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DownloadCommand, CommandResult, getConnection, executeWithProgress, DIR_MAPPINGS} from './hostCommand';
+import { DownloadCommand, CommandResult, getConnection, executeWithProgress, DIR_MAPPINGS } from './hostCommand';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as environment from '../common/environment';
@@ -10,22 +10,25 @@ export class GetTable extends DownloadCommand {
 	command: string;
 
 	tableName: string;
+	commandVerb: string;
 
 	constructor() {
 		super();
 		this.icon = DownloadCommand.icons.GET;
 		this.command = 'psl.getTable';
+		this.commandVerb = 'GET';
 	}
 
-	async filesHandle() {
+	async filesHandle(files: string[]) {
+		files;
 		return this.emptyHandle();
 	}
 
 	async dirHandle(directory: string): Promise<string[]> | undefined {
-		let tableName = await promptUserForTable();
+		let tableName = await this.promptUserForTable();
 		if (!tableName) return;
 		this.tableName = tableName;
-		return [path.join(directory,tableName.toLowerCase())];
+		return [path.join(directory, tableName.toLowerCase())];
 	}
 
 	async emptyHandle() {
@@ -36,8 +39,8 @@ export class GetTable extends DownloadCommand {
 
 	async execute(targetDirectory: string, env: environment.EnvironmentConfig): Promise<CommandResult[]> {
 		let results: CommandResult[];
-		await executeWithProgress(`${this.tableName} GET`, async () => {
-			this.logWait(`${this.tableName} TABLE GET from ${env.name}`);
+		await executeWithProgress(`${this.tableName} ${this.commandVerb}`, async () => {
+			this.logWait(`${this.tableName} TABLE ${this.commandVerb} from ${env.name}`);
 			let connection = await getConnection(env);
 			let output = await connection.getTable(this.tableName.toUpperCase() + '.TBL');
 			connection.close();
@@ -50,13 +53,13 @@ export class GetTable extends DownloadCommand {
 				let fileContent = contentArray[1];
 				fs.writeFile(path.join(targetDirectory, fileName), fileContent);
 			})
-			this.logSuccess(`${this.tableName} TABLE GET from ${env.name} succeeded`);
+			this.logSuccess(`${this.tableName} TABLE ${this.commandVerb} from ${env.name} succeeded`);
 		});
 		return results;
 	}
 
-	private async getFileFromPrompt(workspaceDirectory: string) {
-		let tableName = await promptUserForTable();
+	async getFileFromPrompt(workspaceDirectory: string) {
+		let tableName = await this.promptUserForTable();
 		if (!tableName) return;
 		this.tableName = tableName;
 		let target: string;
@@ -71,15 +74,15 @@ export class GetTable extends DownloadCommand {
 		}
 		return [target];
 	}
-}
-
-async function promptUserForTable() {
-	let inputOptions: vscode.InputBoxOptions = {
-		prompt: 'Name of Table (no extension)',
-		validateInput: (value: string) => {
-			if (!value) return;
-			if (value.includes('.')) return 'Do not include the extension';
-		}
-	};
-	return vscode.window.showInputBox(inputOptions);
+	
+	async promptUserForTable() {
+		let inputOptions: vscode.InputBoxOptions = {
+			prompt: 'Name of Table (no extension)',
+			validateInput: (value: string) => {
+				if (!value) return;
+				if (value.includes('.')) return 'Do not include the extension';
+			}
+		};
+		return vscode.window.showInputBox(inputOptions);
+	}
 }

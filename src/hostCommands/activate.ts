@@ -2,15 +2,15 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 import { commands, ExtensionContext, TextEditor, window } from 'vscode';
-import { getTableHandler } from './get';
-import { refreshTableHandler } from './refresh';
 import { CompileAndLink } from './compileAndLink2';
-import { sendTableHandler } from './send';
 import { RunPSL } from './run2';
 import { Refresh } from './refresh2';
 import { Send } from './send2';
 import { TestCompile } from './testCompile2';
 import { Get } from './get2';
+import { GetTable } from './getTable';
+import { RefreshTable } from './refreshTable';
+import { SendTable } from './sendTable';
 
 const PROFILE_ELEMENTS = [
 	'.FKY',
@@ -37,7 +37,7 @@ export function activate(context: ExtensionContext) {
 
 	registerProfileElementContext();
 
-	const COMMANDS_CLASSES = [RunPSL, Refresh, Send, TestCompile, Get, CompileAndLink];
+	const COMMANDS_CLASSES = [RunPSL, Refresh, Send, TestCompile, Get, CompileAndLink, GetTable, RefreshTable, SendTable];
 
 	for (let Command of COMMANDS_CLASSES) {
 		let commandInstance = new Command();
@@ -48,30 +48,11 @@ export function activate(context: ExtensionContext) {
 		);
 	}
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			'psl.getTable', getTableHandler
-		)
-	);
-
 	// context.subscriptions.push(
 	// 	vscode.commands.registerCommand(
 	// 		'psl.testSendLink', testSendLinkHandler
 	// 	)
 	// );
-
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			'psl.sendTable', sendTableHandler
-		)
-	);
-
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			'psl.refreshTable', refreshTableHandler
-		)
-	);
-
 }
 
 

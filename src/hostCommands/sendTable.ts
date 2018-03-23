@@ -12,7 +12,7 @@ export class SendTable extends Send {
 	constructor() {
 		super();
 		this.icon = UploadCommand.icons.SEND;
-		this.command = 'psl.sendElement';
+		this.command = 'psl.sendTable';
 	}
 
 	async filesHandle(files: string[]) {
