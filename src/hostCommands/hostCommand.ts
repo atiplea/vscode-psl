@@ -262,7 +262,6 @@ export const DIR_MAPPINGS = {
 	'QRY': 'dataqwik/query',
 	'RPT': 'dataqwik/report',
 	'SCR': 'dataqwik/screen',
-	// TABLE not supported
 	'TABLE': 'dataqwik/table',
 	'TBL': '',
 	'TRIG': 'dataqwik/trigger',
