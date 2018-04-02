@@ -54,10 +54,6 @@ export abstract class HostCommand {
 		HostCommand.logger.error(`${HostCommand.icons.ERROR} ${this.icon} ${message}`);
 	}
 
-	protected async saveDocument(file: string) {
-		await vscode.workspace.openTextDocument(file).then(doc => doc.save());
-	}
-
 	protected async filesHandle(files: string[]): Promise<string[] | undefined> {
 		return files;
 	}
@@ -70,7 +66,7 @@ export abstract class HostCommand {
 		return this.dirHandle(workspace.fsPath);
 	}
 
-	abstract passToExecute(files: string[]): void;
+	abstract initExecute(files: string[]): void;
 
 	public async handle(context: ExtensionCommandContext, args: any[]) {
 		const c = getFullContext(context, args);
@@ -87,14 +83,14 @@ export abstract class HostCommand {
 		}
 		if (!files || files.length === 0) return;
 
-		this.passToExecute(files);
+		this.initExecute(files);
 	}
 
 }
 
 export abstract class DownloadCommand extends HostCommand {
 
-	async passToExecute(files: string[]) {
+	async initExecute(files: string[]) {
 		for (let file of files) {
 			let workspaceFile = new WorkspaceFile(file);
 			let envs: EnvironmentConfig[];
@@ -120,7 +116,7 @@ export abstract class DownloadCommand extends HostCommand {
 
 export abstract class UploadCommand extends HostCommand {
 
-	async passToExecute(files: string[]) {
+	async initExecute(files: string[]) {
 		let envMap: Map<EnvironmentConfig, string[]> = new Map();
 		for (let file of files) {
 			let workspaceFile = new WorkspaceFile(file);
@@ -150,13 +146,6 @@ export abstract class UploadCommand extends HostCommand {
 	}
 }
 
-export interface CommandResult {
-	environment: string,
-	message: string,
-	type: string
-}
-
-
 export const enum ContextMode {
 	FILES = 1,
 	DIRECTORY = 2,
@@ -175,6 +164,9 @@ export interface HostCommandContext {
 	mode: ContextMode;
 }
 
+export async function saveDocument(file: string) {
+	await vscode.workspace.openTextDocument(file).then(doc => doc.save());
+}
 
 export function getFullContext(context: ExtensionCommandContext | undefined, args: ExtensionCommandContext[]): HostCommandContext {
 	let files: string[] = [];

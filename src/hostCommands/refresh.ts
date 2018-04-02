@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DownloadCommand, getConnection, executeWithProgress } from './hostCommand';
+import { DownloadCommand, getConnection, executeWithProgress, saveDocument } from './hostCommand';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as environment from '../common/environment';
@@ -28,7 +28,7 @@ export class Refresh extends DownloadCommand {
 
 	async execute(file: string, env: environment.EnvironmentConfig) {
 		await executeWithProgress(`${path.basename(file)} REFRESH`, async () => {
-			await this.saveDocument(file);
+			await saveDocument(file);
 			this.logWait(`${path.basename(file)} REFRESH from ${env.name}`);
 			let connection = await getConnection(env);
 			let output = await connection.get(file);

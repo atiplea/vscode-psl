@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { UploadCommand, getConnection, executeWithProgress } from './hostCommand';
+import { UploadCommand, getConnection, executeWithProgress, saveDocument } from './hostCommand';
 import * as path from 'path';
 import * as environment from '../common/environment';
 
@@ -27,7 +27,7 @@ export class Send extends UploadCommand {
 
 	async execute(file: string, env: environment.EnvironmentConfig) {
 		await executeWithProgress(`${path.basename(file)} SEND`, async () => {
-			await this.saveDocument(file);
+			await saveDocument(file);
 			this.logWait(`${path.basename(file)} SEND to ${env.name}`);
 			let connection = await getConnection(env);
 			await connection.send(file);
