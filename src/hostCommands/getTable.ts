@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DownloadCommand, CommandResult, getConnection, executeWithProgress, DIR_MAPPINGS } from './hostCommand';
+import { DownloadCommand, getConnection, executeWithProgress, DIR_MAPPINGS } from './hostCommand';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as environment from '../common/environment';
@@ -17,6 +17,7 @@ export class GetTable extends DownloadCommand {
 		this.icon = DownloadCommand.icons.GET;
 		this.command = 'psl.getTable';
 		this.commandVerb = 'GET';
+		this.tableName = '';
 	}
 
 	async filesHandle(files: string[]) {
@@ -24,7 +25,7 @@ export class GetTable extends DownloadCommand {
 		return this.emptyHandle();
 	}
 
-	async dirHandle(directory: string): Promise<string[]> | undefined {
+	async dirHandle(directory: string) {
 		let tableName = await this.promptUserForTable();
 		if (!tableName) return;
 		this.tableName = tableName;
@@ -37,8 +38,7 @@ export class GetTable extends DownloadCommand {
 		return this.getFileFromPrompt(chosenWorkspace.fsPath);
 	}
 
-	async execute(targetDirectory: string, env: environment.EnvironmentConfig): Promise<CommandResult[]> {
-		let results: CommandResult[];
+	async execute(targetDirectory: string, env: environment.EnvironmentConfig) {
 		await executeWithProgress(`${this.tableName} ${this.commandVerb}`, async () => {
 			this.logWait(`${this.tableName} TABLE ${this.commandVerb} from ${env.name}`);
 			let connection = await getConnection(env);
@@ -55,7 +55,6 @@ export class GetTable extends DownloadCommand {
 			})
 			this.logSuccess(`${this.tableName} TABLE ${this.commandVerb} from ${env.name} succeeded`);
 		});
-		return results;
 	}
 
 	async getFileFromPrompt(workspaceDirectory: string) {

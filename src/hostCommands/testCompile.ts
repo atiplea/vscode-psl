@@ -1,7 +1,7 @@
 import { PSLDiagnostic } from '../common/diagnostics';
 
 import * as vscode from 'vscode';
-import { UploadCommand, CommandResult, getConnection, executeWithProgress } from './hostCommand';
+import { UploadCommand, getConnection, executeWithProgress } from './hostCommand';
 import * as path from 'path';
 import * as environment from '../common/environment';
 
@@ -16,7 +16,7 @@ export class TestCompile extends UploadCommand {
 		this.command = 'psl.testCompile';
 	}
 
-	async dirHandle(directory: string): Promise<string[]> | undefined {
+	async dirHandle(directory: string): Promise<string[] | undefined> {
 		let options = {
 			defaultUri: vscode.Uri.file(directory),
 			canSelectMany: true,
@@ -27,8 +27,7 @@ export class TestCompile extends UploadCommand {
 		return uris.map(uri => uri.fsPath);
 	}
 
-	async execute(file: string, env: environment.EnvironmentConfig): Promise<CommandResult[]> {
-		let results: CommandResult[];
+	async execute(file: string, env: environment.EnvironmentConfig) {
 		await executeWithProgress(`${path.basename(file)} TEST COMPILE`, async () => {
 			this.logWait(`${path.basename(file)} TEST COMPILE in ${env.name}`);
 			let connection = await getConnection(env);
@@ -39,17 +38,16 @@ export class TestCompile extends UploadCommand {
 			let testCompileSucceeded = pslDiagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error).length === 0;
 			let testCompileWarning = pslDiagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning).length > 0;
 			if (!testCompileSucceeded) {
-				this.logError(`${path.basename(file)} TEST COMPILE in ${env.name} failed` + ('\n'+output).split('\n').join('\n' + ' '.repeat(20)))
+				this.logError(`${path.basename(file)} TEST COMPILE in ${env.name} failed` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			else if (testCompileWarning) {
-				this.logWait(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded with warning` + ('\n'+output).split('\n').join('\n' + ' '.repeat(20)))
+				this.logWait(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded with warning` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			else {
-				this.logSuccess(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded` + ('\n'+output).split('\n').join('\n' + ' '.repeat(20)))
+				this.logSuccess(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			PSLDiagnostic.setDiagnostics(pslDiagnostics, env.name, file);
 		});
-		return results;
 	}
 }
 
@@ -99,6 +97,13 @@ class PSLCompilerMessage {
 	message: string
 	location: string
 
+	constructor(source: string, code: string, message: string, location: string) {
+		this.source = source;
+		this.code = code;
+		this.message = message;
+		this.location = location;
+	}
+
 	isFilled(): boolean {
 		return (this.source && this.message && this.location) !== '';
 	}
@@ -129,11 +134,12 @@ function splitCompilerOutput(compilerOutput: string): Array<PSLCompilerMessage> 
 
 	let splitCompilerOutput = compilerOutput.replace(/\r/g, '').trim().split('\n');
 	for (let i = 1; i < splitCompilerOutput.length; i++) {
-		compilerMessage = new PSLCompilerMessage();
-		compilerMessage.source = splitCompilerOutput[i];
-		compilerMessage.code = splitCompilerOutput[i + 1];
-		compilerMessage.message = splitCompilerOutput[i + 2];
-		compilerMessage.location = splitCompilerOutput[i + 3];
+		compilerMessage = new PSLCompilerMessage(
+			splitCompilerOutput[i],
+			splitCompilerOutput[i + 1],
+			splitCompilerOutput[i + 2],
+			splitCompilerOutput[i + 3]
+		)
 		if (compilerMessage.isFilled()) outputArrays.push(compilerMessage);
 		i = i + 4;
 	}

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DownloadCommand, CommandResult, getConnection, executeWithProgress } from './hostCommand';
+import { DownloadCommand, getConnection, executeWithProgress } from './hostCommand';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as environment from '../common/environment';
@@ -15,7 +15,7 @@ export class Refresh extends DownloadCommand {
 		this.command = 'psl.refreshElement';
 	}
 
-	async dirHandle(directory: string): Promise<string[]> | undefined {
+	async dirHandle(directory: string) {
 		let options = {
 			defaultUri: vscode.Uri.file(directory),
 			canSelectMany: true,
@@ -26,8 +26,7 @@ export class Refresh extends DownloadCommand {
 		return uris.map(uri => uri.fsPath);
 	}
 
-	async execute(file: string, env: environment.EnvironmentConfig): Promise<CommandResult[]> {
-		let results: CommandResult[];
+	async execute(file: string, env: environment.EnvironmentConfig) {
 		await executeWithProgress(`${path.basename(file)} REFRESH`, async () => {
 			await this.saveDocument(file);
 			this.logWait(`${path.basename(file)} REFRESH from ${env.name}`);
@@ -38,6 +37,5 @@ export class Refresh extends DownloadCommand {
 			await vscode.window.showTextDocument(vscode.Uri.file(file), { preview: false });
 			this.logSuccess(`${path.basename(file)} REFRESH from ${env.name} succeeded`);
 		});
-		return results;
 	}
 }

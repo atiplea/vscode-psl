@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DownloadCommand, CommandResult, getConnection, executeWithProgress, DIR_MAPPINGS} from './hostCommand';
+import { DownloadCommand, getConnection, executeWithProgress, DIR_MAPPINGS } from './hostCommand';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as environment from '../common/environment';
@@ -17,7 +17,7 @@ export class Get extends DownloadCommand {
 	}
 
 	async filesHandle(files: string[]) {
-		let workspace: vscode.WorkspaceFolder;
+		let workspace: vscode.WorkspaceFolder | undefined;
 		if (files.length === 1) {
 			workspace = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(files[0]));
 			if (!workspace) return;
@@ -28,10 +28,10 @@ export class Get extends DownloadCommand {
 		return this.getFileFromPrompt(workspace.uri.fsPath)
 	}
 
-	async dirHandle(directory: string): Promise<string[]> | undefined {
+	async dirHandle(directory: string) {
 		let input = await promptUserForComponent();
 		if (!input) return;
-		return [path.join(directory,input)];
+		return [path.join(directory, input)];
 	}
 
 	async emptyHandle() {
@@ -40,8 +40,7 @@ export class Get extends DownloadCommand {
 		return this.getFileFromPrompt(chosenWorkspace.fsPath);
 	}
 
-	async execute(file: string, env: environment.EnvironmentConfig): Promise<CommandResult[]> {
-		let results: CommandResult[];
+	async execute(file: string, env: environment.EnvironmentConfig) {
 		await executeWithProgress(`${path.basename(file)} GET`, async () => {
 			this.logWait(`${path.basename(file)} GET from ${env.name}`);
 			let connection = await getConnection(env);
@@ -52,7 +51,6 @@ export class Get extends DownloadCommand {
 			this.logSuccess(`${path.basename(file)} GET from ${env.name} succeeded`);
 			await vscode.window.showTextDocument(vscode.Uri.file(file), { preview: false });
 		});
-		return results;
 	}
 
 	async getFileFromPrompt(workspaceDirectory: string) {
@@ -63,7 +61,7 @@ export class Get extends DownloadCommand {
 		let filters: { [name: string]: string[] } = {}
 		filters[description] = [extension]
 		let target
-		let defaultLocation = DIR_MAPPINGS[extension];
+		let defaultLocation: string | undefined = DIR_MAPPINGS[extension];
 		if (defaultLocation) {
 			target = { fsPath: path.join(workspaceDirectory, defaultLocation, input) }
 		}

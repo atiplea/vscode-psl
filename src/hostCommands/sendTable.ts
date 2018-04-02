@@ -29,11 +29,11 @@ export class SendTable extends Send {
 		return returnFiles;
 	}
 
-	async dirHandle(): Promise<string[]> | undefined {
+	async dirHandle(): Promise<undefined> {
 		return;
 	}
 
-	async emptyHandle(): Promise<string[]> | undefined {
+	async emptyHandle(): Promise<undefined> {
 		return;
 	}
 }

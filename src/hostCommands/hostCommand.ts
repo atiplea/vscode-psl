@@ -36,7 +36,7 @@ export abstract class HostCommand {
 	protected abstract icon: string;
 	protected abstract command: string;
 
-	protected async abstract execute(file: string, env: EnvironmentConfig): Promise<CommandResult[]>;
+	protected async abstract execute(file: string, env: EnvironmentConfig): Promise<void>;
 
 	protected logWait(message: string) {
 		HostCommand.logger.info(`${HostCommand.icons.WAIT} ${this.icon} ${message}`);
@@ -62,19 +62,19 @@ export abstract class HostCommand {
 		return files;
 	}
 
-	protected async abstract dirHandle(directory: string): Promise<string[]> | undefined;
+	protected abstract async dirHandle(directory: string): Promise<string[] | undefined>;
 
-	protected async emptyHandle(): Promise<string[]> | undefined {
+	protected async emptyHandle(): Promise<string[] | undefined> {
 		let workspace = await workspaceQuickPick();
 		if (!workspace) return;
 		return this.dirHandle(workspace.fsPath);
 	}
 
-	abstract passToExecute(files: string[]);
+	abstract passToExecute(files: string[]): void;
 
 	public async handle(context: ExtensionCommandContext, args: any[]) {
 		const c = getFullContext(context, args);
-		let files: string[];
+		let files: string[] | undefined;
 
 		if (c.mode === ContextMode.FILES) {
 			files = await this.filesHandle(c.files);
@@ -103,12 +103,14 @@ export abstract class DownloadCommand extends HostCommand {
 			}
 			catch (error) {
 				console.log(error);
+				return;
 			}
 
 			let env = await getCommandenvConfigQuickPick(envs, file);
 			if (!env) return;
-			this.execute(file, env).catch(error => {
-				this.logError(`${error} in ${env.name}`);
+			let chosenEnv = env;
+			this.execute(file, chosenEnv).catch(error => {
+				this.logError(`${error} in ${chosenEnv.name}`);
 			})
 		}
 	}
@@ -128,6 +130,7 @@ export abstract class UploadCommand extends HostCommand {
 			}
 			catch (error) {
 				this.logError(error);
+				return;
 			}
 
 			for (let env of envs) {
@@ -242,27 +245,26 @@ export async function promptUserForTable() {
 	return vscode.window.showInputBox(inputOptions);
 }
 
-export const DIR_MAPPINGS = {
+export const DIR_MAPPINGS: { [extension: string]: string } = {
 	'BATCH': 'dataqwik/batch',
-	'COL': '',
 	'DAT': 'data',
 	'FKY': 'dataqwik/foreign_key',
-	// 'G': 'Global',
 	'IDX': 'dataqwik/index',
 	'JFD': 'dataqwik/journal',
 	'm': 'routine',
-	'PPL': '',
 	'PROC': 'dataqwik/procedure',
 	'properties': 'property',
+	'QRY': 'dataqwik/query',
+	'RPT': 'dataqwik/report',
+	'SCR': 'dataqwik/screen',
+	'TABLE': 'dataqwik/table',
+	'TRIG': 'dataqwik/trigger',
+	'COL': '',
+	'PPL': '',
 	'PSL': '',
 	'psl': '',
 	'pslx': '',
 	'pslxtra': '',
 	'psql': '',
-	'QRY': 'dataqwik/query',
-	'RPT': 'dataqwik/report',
-	'SCR': 'dataqwik/screen',
-	'TABLE': 'dataqwik/table',
 	'TBL': '',
-	'TRIG': 'dataqwik/trigger',
 }

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { UploadCommand, CommandResult, getConnection, executeWithProgress } from './hostCommand';
+import { UploadCommand, getConnection, executeWithProgress } from './hostCommand';
 import * as path from 'path';
 import * as environment from '../common/environment';
 
@@ -14,7 +14,7 @@ export class RunPSL extends UploadCommand {
 		this.command = 'psl.runPSL';
 	}
 
-	async dirHandle(directory: string): Promise<string[]> | undefined {
+	async dirHandle(directory: string) {
 		let options = {
 			defaultUri: vscode.Uri.file(directory),
 			canSelectMany: true,
@@ -25,8 +25,7 @@ export class RunPSL extends UploadCommand {
 		return uris.map(uri => uri.fsPath);
 	}
 
-	async execute(file: string, env: environment.EnvironmentConfig): Promise<CommandResult[]> {
-		let results: CommandResult[];
+	async execute(file: string, env: environment.EnvironmentConfig) {
 		await executeWithProgress(`${path.basename(file)} RUN`, async () => {
 			await this.saveDocument(file);
 			this.logWait(`${path.basename(file)} RUN in ${env.name}`);
@@ -35,6 +34,5 @@ export class RunPSL extends UploadCommand {
 			connection.close();
 			this.logSuccess(`${path.basename(file)} RUN in ${env.name} succeeded\n${output.trim()}`);
 		});
-		return results;
 	}
 }

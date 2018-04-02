@@ -43,7 +43,7 @@ export class RefreshTable extends GetTable {
 		return [target];
 	}
 
-	async dirHandle(): Promise<string[]> | undefined {
+	async dirHandle(): Promise<undefined> {
 		return;
 	}
 
