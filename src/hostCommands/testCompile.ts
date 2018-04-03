@@ -20,7 +20,7 @@ export class TestCompile extends hc.UploadCommand {
 
 	async execute(file: string, env: environment.EnvironmentConfig) {
 		await hc.executeWithProgress(`${path.basename(file)} TEST COMPILE`, async () => {
-			hc.logger.info(`${path.basename(file)} TEST COMPILE in ${env.name}`);
+			this.logWait(`${path.basename(file)} TEST COMPILE in ${env.name}`);
 			let connection = await hc.getConnection(env);
 			let output = await connection.test(file);
 			connection.close();
@@ -29,13 +29,13 @@ export class TestCompile extends hc.UploadCommand {
 			let testCompileSucceeded = pslDiagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error).length === 0;
 			let testCompileWarning = pslDiagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning).length > 0;
 			if (!testCompileSucceeded) {
-				hc.logger.info(`${path.basename(file)} TEST COMPILE in ${env.name} failed` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
+				this.logSuccess(`${path.basename(file)} TEST COMPILE in ${env.name} failed` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			else if (testCompileWarning) {
-				hc.logger.info(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded with warning` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
+				this.logWarn(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded with warning` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			else {
-				hc.logger.info(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
+				this.logError(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			PSLDiagnostic.setDiagnostics(pslDiagnostics, env.name, file);
 		});

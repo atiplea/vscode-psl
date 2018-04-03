@@ -18,11 +18,11 @@ export class Send extends hc.UploadCommand {
 	async execute(file: string, env: environment.EnvironmentConfig) {
 		await hc.executeWithProgress(`${path.basename(file)} SEND`, async () => {
 			await hc.saveDocument(file);
-			hc.logger.info(`${path.basename(file)} SEND to ${env.name}`);
+			this.logWait(`${path.basename(file)} SEND to ${env.name}`);
 			let connection = await hc.getConnection(env);
 			await connection.send(file);
 			connection.close();
-			hc.logger.info(`${path.basename(file)} SEND to ${env.name} succeeded`);
+			this.logSuccess(`${path.basename(file)} SEND to ${env.name} succeeded`);
 		});
 	}
 }

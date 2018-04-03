@@ -18,11 +18,11 @@ export class RunPSL extends hc.UploadCommand {
 	async execute(file: string, env: environment.EnvironmentConfig) {
 		await hc.executeWithProgress(`${path.basename(file)} RUN`, async () => {
 			await hc.saveDocument(file);
-			hc.logger.info(`${path.basename(file)} RUN in ${env.name}`);
+			this.logWait(`${path.basename(file)} RUN in ${env.name}`);
 			let connection = await hc.getConnection(env);
 			let output = await connection.run(file);
 			connection.close();
-			hc.logger.info(`${path.basename(file)} RUN in ${env.name} succeeded\n${output.trim()}`);
+			this.logSuccess(`${path.basename(file)} RUN in ${env.name} succeeded\n${output.trim()}`);
 		});
 	}
 }

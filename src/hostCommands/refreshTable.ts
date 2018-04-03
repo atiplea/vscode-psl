@@ -40,7 +40,7 @@ export class RefreshTable extends GetTable {
 		return [target];
 	}
 
-	async dirHandle(): Promise<undefined> {
+	async directoryHandle(): Promise<undefined> {
 		return;
 	}
 

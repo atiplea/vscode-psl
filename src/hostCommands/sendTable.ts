@@ -8,11 +8,13 @@ export class SendTable extends Send {
 
 	icon: string;
 	command: string;
+	dialogLabel: string;
 
 	constructor() {
 		super();
 		this.icon = icons.SEND;
 		this.command = 'psl.sendTable';
+		this.dialogLabel = 'Send Table';
 	}
 
 	async filesHandle(files: string[]) {
