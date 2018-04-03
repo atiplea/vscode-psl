@@ -2,35 +2,18 @@ import * as hc from './hostCommand';
 import * as path from 'path';
 import * as environment from '../common/environment';
 
-export class CompileAndLink implements hc.HostCommand {
+export class CompileAndLink extends hc.UploadCommand {
 
 	icon: string;
 	command: string;
+	dialogLabel: string;
 
 	constructor() {
+		super();
 		this.icon = hc.icons.LINK;
 		this.command = 'psl.compileAndLink';
+		this.dialogLabel = 'Compile and Link';
 	 }
-
-	async handle(context: hc.ExtensionCommandContext, args: any[]): Promise<void> {
-		hc.init(this, context, args);
-	}
-
-	async filesHandle(contextFiles: string[]): Promise<string[]> {
-		return contextFiles;
-	}
-
-	async directoryHandle(contextDirectory: string): Promise<string[] | undefined> {
-		return hc.promptOpenDialog(contextDirectory, 'Compile and Link');
-	}
-
-	async emptyHandle(): Promise<string[] | undefined> {
-		return hc.chooseWorkspaceThenPrompt(this);
-	}
-
-	async initExecute(files: string[]): Promise<void> {
-		hc.upload(this, files);
-	}
 
 	async execute(file: string, env: environment.EnvironmentConfig) {
 		await hc.executeWithProgress(`${path.basename(file)} COMPILE AND LINK`, async () => {

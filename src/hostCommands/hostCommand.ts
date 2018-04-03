@@ -47,18 +47,18 @@ export interface HostCommand {
 	 * @param contextFiles The files from the context
 	 */
 	filesHandle(contextFiles: string[]): Promise<string[] | undefined>
-	
+
 	/**
 	 * A handle to determine which files from a given context directory will get passed to execute.
 	 * @param contextDirectory A directory from the context
 	 */
 	directoryHandle(contextDirectory: string): Promise<string[] | undefined>;
-	
+
 	/**
 	 * A handle to determine which files from no context will get passed to execute.
 	 */
 	emptyHandle(): Promise<string[] | undefined>;
-	
+
 	/**
 	 * The main engine for the excecute method that will collect environment information
 	 * @param files 
@@ -71,6 +71,59 @@ export interface HostCommand {
 	 * @param env The target environment 
 	 */
 	execute(file: string, env: EnvironmentConfig): Promise<void>;
+}
+
+export abstract class UploadCommand implements HostCommand {
+	abstract icon: string;
+	abstract command: string;
+	abstract dialogLabel: string;
+
+    /**
+     * The main handler called by registerCommand
+     * @param context Context passed by vscode
+     * @param args Additional args, usually containing files from multiselect
+     */
+	async handle(context: ExtensionCommandContext, args: any[]): Promise<void> {
+		init(this, context, args);
+	}
+
+    /**
+     * A handle to determine which files from the context will get passed to execute.
+     * @param contextFiles The files from the context
+     */
+	async filesHandle(contextFiles: string[]): Promise<string[] | undefined> {
+		return contextFiles;
+	}
+
+    /**
+     * A handle to determine which files from a given context directory will get passed to execute.
+     * @param contextDirectory A directory from the context
+     */
+	directoryHandle(contextDirectory: string): Promise<string[] | undefined> {
+		return promptOpenDialog(contextDirectory, this.dialogLabel);
+	}
+
+    /**
+     * A handle to determine which files from no context will get passed to execute.
+     */
+	emptyHandle(): Promise<string[] | undefined> {
+		return chooseWorkspaceThenPrompt(this);
+	}
+
+    /**
+     * The main engine for the excecute method that will collect environment information
+     * @param files
+     */
+	async initExecute(files: string[]): Promise<void> {
+		upload(this, files);
+	}
+
+    /**
+     * The execution that occurs for every individual HostCommand.
+     * @param file The file being executed
+     * @param env The target environment
+     */
+	abstract execute(file: string, env: EnvironmentConfig): Promise<void>;
 }
 
 export async function init(hostCommand: HostCommand, context: ExtensionCommandContext, args: any[]): Promise<string[] | undefined> {

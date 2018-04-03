@@ -2,34 +2,17 @@ import * as hc from './hostCommand';
 import * as path from 'path';
 import * as environment from '../common/environment';
 
-export class RunPSL implements hc.HostCommand {
+export class RunPSL extends hc.UploadCommand {
 
 	icon: string;
 	command: string;
+	dialogLabel: string;
 
 	constructor() {
+		super();
 		this.icon = hc.icons.RUN;
 		this.command = 'psl.runPSL';
-	}
-
-	async handle(context: hc.ExtensionCommandContext, args: any[]): Promise<void> {
-		hc.init(this, context, args);
-	}
-
-	async filesHandle(contextFiles: string[]): Promise<string[]> {
-		return contextFiles;
-	}
-
-	async directoryHandle(contextDirectory: string): Promise<string[] | undefined> {
-		return hc.promptOpenDialog(contextDirectory, 'Run PSL');
-	}
-
-	async emptyHandle(): Promise<string[] | undefined> {
-		return hc.chooseWorkspaceThenPrompt(this);
-	}
-
-	async initExecute(files: string[]): Promise<void> {
-		hc.upload(this, files);
+		this.dialogLabel = 'Run PSL';
 	}
 
 	async execute(file: string, env: environment.EnvironmentConfig) {

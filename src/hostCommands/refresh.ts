@@ -4,34 +4,17 @@ import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as environment from '../common/environment';
 
-export class Refresh implements hc.HostCommand {
+export class Refresh extends hc.UploadCommand {
 
 	icon: string;
 	command: string;
+	dialogLabel: string;
 
 	constructor() {
+		super();
 		this.icon = hc.icons.REFRESH;
 		this.command = 'psl.refreshElement';
-	}
-	
-	async handle(context: hc.ExtensionCommandContext, args: any[]): Promise<void> {
-		hc.init(this, context, args);
-	}
-
-	async filesHandle(contextFiles: string[]): Promise<string[]> {
-		return contextFiles;
-	}
-
-	async directoryHandle(contextDirectory: string) {
-		return hc.promptOpenDialog(contextDirectory, 'Refresh');
-	}
-
-	async emptyHandle(): Promise<string[] | undefined> {
-		return hc.chooseWorkspaceThenPrompt(this);
-	}
-
-	async initExecute(files: string[]): Promise<void> {
-		hc.download(this, files);
+		this.dialogLabel = 'Refresh';
 	}
 
 	async execute(file: string, env: environment.EnvironmentConfig) {
