@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import { DownloadCommand, getConnection, executeWithProgress, DIR_MAPPINGS } from './hostCommand';
+import * as hc from './hostCommand';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as environment from '../common/environment';
 
-export class GetTable extends DownloadCommand {
+export class GetTable implements hc.HostCommand {
 
 	icon: string;
 	command: string;
@@ -13,23 +13,31 @@ export class GetTable extends DownloadCommand {
 	commandVerb: string;
 
 	constructor() {
-		super();
-		this.icon = DownloadCommand.icons.GET;
+		this.icon = hc.icons.GET;
 		this.command = 'psl.getTable';
 		this.commandVerb = 'GET';
+		// TODO this is problematic
 		this.tableName = '';
 	}
 
-	async filesHandle(files: string[]) {
-		files;
+	async handle(context: hc.ExtensionCommandContext, args: any[]): Promise<void> {
+		this.tableName = '';
+		hc.init(this, context, args);
+	}
+
+	async filesHandle(_contextFiles: string[]) {
+		/**
+		 * This file handle should always act like the emptyHandle, and thus ignores contextFiles (as denoted by the _)
+		 */
 		return this.emptyHandle();
 	}
 
-	async dirHandle(directory: string) {
+
+	async directoryHandle(contextDirectory: string) {
 		let tableName = await this.promptUserForTable();
 		if (!tableName) return;
 		this.tableName = tableName;
-		return [path.join(directory, tableName.toLowerCase())];
+		return [path.join(contextDirectory, tableName.toLowerCase())];
 	}
 
 	async emptyHandle() {
@@ -38,10 +46,14 @@ export class GetTable extends DownloadCommand {
 		return this.getFileFromPrompt(chosenWorkspace.fsPath);
 	}
 
+	async initExecute(files: string[]) {
+		hc.download(this, files);
+	}
+
 	async execute(targetDirectory: string, env: environment.EnvironmentConfig) {
-		await executeWithProgress(`${this.tableName} ${this.commandVerb}`, async () => {
-			this.logWait(`${this.tableName} TABLE ${this.commandVerb} from ${env.name}`);
-			let connection = await getConnection(env);
+		await hc.executeWithProgress(`${this.tableName} ${this.commandVerb}`, async () => {
+			hc.logger.info(`${this.tableName} TABLE ${this.commandVerb} from ${env.name}`);
+			let connection = await hc.getConnection(env);
 			let output = await connection.getTable(this.tableName.toUpperCase() + '.TBL');
 			connection.close();
 			await fs.ensureDir(targetDirectory);
@@ -53,7 +65,7 @@ export class GetTable extends DownloadCommand {
 				let fileContent = contentArray[1];
 				fs.writeFile(path.join(targetDirectory, fileName), fileContent);
 			})
-			this.logSuccess(`${this.tableName} TABLE ${this.commandVerb} from ${env.name} succeeded`);
+			hc.logger.info(`${this.tableName} TABLE ${this.commandVerb} from ${env.name} succeeded`);
 		});
 	}
 
@@ -62,7 +74,7 @@ export class GetTable extends DownloadCommand {
 		if (!tableName) return;
 		this.tableName = tableName;
 		let target: string;
-		let tableDir = DIR_MAPPINGS['TABLE'];
+		let tableDir = hc.DIR_MAPPINGS['TABLE'];
 		if (tableDir) {
 			target = path.join(workspaceDirectory, tableDir, tableName.toLowerCase());
 		}
@@ -73,7 +85,7 @@ export class GetTable extends DownloadCommand {
 		}
 		return [target];
 	}
-	
+
 	async promptUserForTable() {
 		let inputOptions: vscode.InputBoxOptions = {
 			prompt: 'Name of Table (no extension)',

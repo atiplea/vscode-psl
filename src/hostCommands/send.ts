@@ -1,38 +1,42 @@
-import * as vscode from 'vscode';
-import { UploadCommand, getConnection, executeWithProgress, saveDocument } from './hostCommand';
+import * as hc from './hostCommand';
 import * as path from 'path';
 import * as environment from '../common/environment';
 
-export class Send extends UploadCommand {
+export class Send implements hc.HostCommand {
 
 	icon: string;
 	command: string;
 
 	constructor() {
-		super();
-		this.icon = UploadCommand.icons.SEND;
+		this.icon = hc.icons.SEND;
 		this.command = 'psl.sendElement';
 	}
 
-	async dirHandle(directory: string) {
-		let options = {
-			defaultUri: vscode.Uri.file(directory),
-			canSelectMany: true,
-			openLabel: 'Send'
-		};
-		let uris = await vscode.window.showOpenDialog(options)
-		if (!uris) return;
-		return uris.map(uri => uri.fsPath);
+	async handle(context: hc.ExtensionCommandContext, args: any[]): Promise<void> {
+		hc.init(this, context, args);
 	}
 
+	async filesHandle(contextFiles: string[]): Promise<string[]> {
+		return contextFiles;
+	}
+	async directoryHandle(contextDirectory: string) {
+		return hc.promptOpenDialog(contextDirectory, 'Send');
+	}
+	async emptyHandle(): Promise<string[] | undefined> {
+		return hc.chooseWorkspaceThenPrompt(this);
+	}
+
+	async initExecute(files: string[]): Promise<void> {
+		hc.upload(this, files);
+	}
 	async execute(file: string, env: environment.EnvironmentConfig) {
-		await executeWithProgress(`${path.basename(file)} SEND`, async () => {
-			await saveDocument(file);
-			this.logWait(`${path.basename(file)} SEND to ${env.name}`);
-			let connection = await getConnection(env);
+		await hc.executeWithProgress(`${path.basename(file)} SEND`, async () => {
+			await hc.saveDocument(file);
+			hc.logger.info(`${path.basename(file)} SEND to ${env.name}`);
+			let connection = await hc.getConnection(env);
 			await connection.send(file);
 			connection.close();
-			this.logSuccess(`${path.basename(file)} SEND to ${env.name} succeeded`);
+			hc.logger.info(`${path.basename(file)} SEND to ${env.name} succeeded`);
 		});
 	}
 }

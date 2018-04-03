@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import {Send} from './send';
-import { UploadCommand } from './hostCommand';
+import { icons } from './hostCommand';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 
@@ -11,7 +11,7 @@ export class SendTable extends Send {
 
 	constructor() {
 		super();
-		this.icon = UploadCommand.icons.SEND;
+		this.icon = icons.SEND;
 		this.command = 'psl.sendTable';
 	}
 
@@ -29,13 +29,6 @@ export class SendTable extends Send {
 		return returnFiles;
 	}
 
-	async dirHandle(): Promise<undefined> {
-		return;
-	}
-
-	async emptyHandle(): Promise<undefined> {
-		return;
-	}
 }
 
 function tableFirst(a: string, b: string) {

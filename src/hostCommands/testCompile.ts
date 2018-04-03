@@ -1,36 +1,42 @@
 import { PSLDiagnostic } from '../common/diagnostics';
 
 import * as vscode from 'vscode';
-import { UploadCommand, getConnection, executeWithProgress } from './hostCommand';
+import * as hc from './hostCommand';
 import * as path from 'path';
 import * as environment from '../common/environment';
 
-export class TestCompile extends UploadCommand {
+export class TestCompile implements hc.HostCommand {
 
 	icon: string;
 	command: string;
 
 	constructor() {
-		super();
-		this.icon = UploadCommand.icons.TEST;
+		this.icon = hc.icons.TEST;
 		this.command = 'psl.testCompile';
 	}
 
-	async dirHandle(directory: string): Promise<string[] | undefined> {
-		let options = {
-			defaultUri: vscode.Uri.file(directory),
-			canSelectMany: true,
-			openLabel: 'Test Compile'
-		};
-		let uris = await vscode.window.showOpenDialog(options)
-		if (!uris) return;
-		return uris.map(uri => uri.fsPath);
+	async handle(context: hc.ExtensionCommandContext, args: any[]): Promise<void> {
+		hc.init(this, context, args);
+	}
+
+	async filesHandle(contextFiles: string[]): Promise<string[]> {
+		return contextFiles;
+	}
+	async directoryHandle(contextDirectory: string) {
+		return hc.promptOpenDialog(contextDirectory, 'Send');
+	}
+	async emptyHandle(): Promise<string[] | undefined> {
+		return hc.chooseWorkspaceThenPrompt(this);
+	}
+
+	async initExecute(files: string[]): Promise<void> {
+		hc.upload(this, files);
 	}
 
 	async execute(file: string, env: environment.EnvironmentConfig) {
-		await executeWithProgress(`${path.basename(file)} TEST COMPILE`, async () => {
-			this.logWait(`${path.basename(file)} TEST COMPILE in ${env.name}`);
-			let connection = await getConnection(env);
+		await hc.executeWithProgress(`${path.basename(file)} TEST COMPILE`, async () => {
+			hc.logger.info(`${path.basename(file)} TEST COMPILE in ${env.name}`);
+			let connection = await hc.getConnection(env);
 			let output = await connection.test(file);
 			connection.close();
 			let textDocument = await vscode.workspace.openTextDocument(file);
@@ -38,13 +44,13 @@ export class TestCompile extends UploadCommand {
 			let testCompileSucceeded = pslDiagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error).length === 0;
 			let testCompileWarning = pslDiagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning).length > 0;
 			if (!testCompileSucceeded) {
-				this.logError(`${path.basename(file)} TEST COMPILE in ${env.name} failed` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
+				hc.logger.info(`${path.basename(file)} TEST COMPILE in ${env.name} failed` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			else if (testCompileWarning) {
-				this.logWait(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded with warning` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
+				hc.logger.info(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded with warning` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			else {
-				this.logSuccess(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
+				hc.logger.info(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			PSLDiagnostic.setDiagnostics(pslDiagnostics, env.name, file);
 		});

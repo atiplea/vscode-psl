@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 import { commands, ExtensionContext, TextEditor, window } from 'vscode';
+
 import { CompileAndLink } from './compileAndLink';
 import { RunPSL } from './run';
 import { Refresh } from './refresh';
@@ -38,7 +39,6 @@ export function activate(context: ExtensionContext) {
 	registerProfileElementContext();
 
 	const COMMANDS_CLASSES = [RunPSL, Refresh, Send, TestCompile, Get, CompileAndLink, GetTable, RefreshTable, SendTable];
-
 	for (let Command of COMMANDS_CLASSES) {
 		let commandInstance = new Command();
 		context.subscriptions.push(

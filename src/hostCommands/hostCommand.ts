@@ -5,151 +5,152 @@ export { extensionToDescription } from '../mtm/utils';
 import { LaunchQuickPick, WorkspaceFile, workspaceQuickPick, EnvironmentConfig } from '../common/environment';
 import { MtmConnection } from '../mtm/mtm';
 
-export abstract class HostCommand {
+const outputChannel = vscode.window.createOutputChannel('Profile Host');
 
-	protected static outputChannel = vscode.window.createOutputChannel('Profile Host');
-
-	private static logger = {
-		info: (message: string) => {
-			HostCommand.outputChannel.show();
-			HostCommand.outputChannel.appendLine(`[INFO][${new Date().toTimeString().split(' ')[0]}]    ${message.trim()}\n`)
-		},
-		error: (message: string) => {
-			HostCommand.outputChannel.show();
-			HostCommand.outputChannel.appendLine(`[ERR!][${new Date().toTimeString().split(' ')[0]}]    ${message.trim()}\n`)
-		}
-	}
-
-	protected static icons = {
-		ERROR: '✖',
-		GET: '⇩',
-		LINK: '🔗',
-		REFRESH: '🔃',
-		RUN: '▶',
-		SEND: '⇧',
-		SUCCESS: '✔',
-		TEST: '⚙',
-		WAIT: '…',
-		WARN: '⚠',
-	}
-
-	protected abstract icon: string;
-	protected abstract command: string;
-
-	protected async abstract execute(file: string, env: EnvironmentConfig): Promise<void>;
-
-	protected logWait(message: string) {
-		HostCommand.logger.info(`${HostCommand.icons.WAIT} ${this.icon} ${message}`);
-	}
-
-	protected logSuccess(message: string) {
-		HostCommand.logger.info(`${HostCommand.icons.SUCCESS} ${this.icon} ${message}`);
-	}
-
-	protected logWarn(message: string) {
-		HostCommand.logger.info(`${HostCommand.icons.WARN} ${this.icon} ${message}`);
-	}
-
-	protected logError(message: string) {
-		HostCommand.logger.error(`${HostCommand.icons.ERROR} ${this.icon} ${message}`);
-	}
-
-	protected async filesHandle(files: string[]): Promise<string[] | undefined> {
-		return files;
-	}
-
-	protected abstract async dirHandle(directory: string): Promise<string[] | undefined>;
-
-	protected async emptyHandle(): Promise<string[] | undefined> {
-		let workspace = await workspaceQuickPick();
-		if (!workspace) return;
-		return this.dirHandle(workspace.fsPath);
-	}
-
-	abstract initExecute(files: string[]): void;
-
-	public async handle(context: ExtensionCommandContext, args: any[]) {
-		const c = getFullContext(context, args);
-		let files: string[] | undefined;
-
-		if (c.mode === ContextMode.FILES) {
-			files = await this.filesHandle(c.files);
-		}
-		else if (c.mode === ContextMode.DIRECTORY) {
-			files = await this.dirHandle(c.files[0]);
-		}
-		else {
-			files = await this.emptyHandle();
-		}
-		if (!files || files.length === 0) return;
-
-		this.initExecute(files);
-	}
-
-}
-
-export abstract class DownloadCommand extends HostCommand {
-
-	async initExecute(files: string[]) {
-		for (let file of files) {
-			let workspaceFile = new WorkspaceFile(file);
-			let envs: EnvironmentConfig[];
-			try {
-				envs = await workspaceFile.environmentObjects;
-			}
-			catch (error) {
-				console.log(error);
-				return;
-			}
-
-			let env = await getCommandenvConfigQuickPick(envs, file);
-			if (!env) return;
-			let chosenEnv = env;
-			this.execute(file, chosenEnv).catch(error => {
-				this.logError(`${error} in ${chosenEnv.name}`);
-			})
-		}
+export const logger = {
+	info: (message: string) => {
+		outputChannel.show();
+		outputChannel.appendLine(`[INFO][${new Date().toTimeString().split(' ')[0]}]    ${message.trim()}\n`)
+	},
+	error: (message: string) => {
+		outputChannel.show();
+		outputChannel.appendLine(`[ERR!][${new Date().toTimeString().split(' ')[0]}]    ${message.trim()}\n`)
 	}
 }
 
+export const enum icons {
+	ERROR = '✖',
+	GET = '⇩',
+	LINK = '🔗',
+	REFRESH = '🔃',
+	RUN = '▶',
+	SEND = '⇧',
+	SUCCESS = '✔',
+	TEST = '⚙',
+	WAIT = '…',
+	WARN = '⚠',
+}
 
 
-export abstract class UploadCommand extends HostCommand {
+export interface HostCommand {
+	icon: string;
+	command: string;
 
-	async initExecute(files: string[]) {
-		let envMap: Map<EnvironmentConfig, string[]> = new Map();
-		for (let file of files) {
-			let workspaceFile = new WorkspaceFile(file);
-			let envs: EnvironmentConfig[];
-			try {
-				envs = await workspaceFile.environmentObjects;
-			}
-			catch (error) {
-				this.logError(error);
-				return;
-			}
+	/**
+	 * The main handler called by registerCommand
+	 * @param context Context passed by vscode
+	 * @param args Additional args, usually containing files from multiselect
+	 */
+	handle(context: ExtensionCommandContext, args: any[]): Promise<void>;
 
-			for (let env of envs) {
-				let envFiles = envMap.get(env);
-				if (!envFiles) envFiles = []
-				envMap.set(env, envFiles.concat(file));
-			}
+	/**
+	 * A handle to determine which files from the context will get passed to execute.
+	 * @param contextFiles The files from the context
+	 */
+	filesHandle(contextFiles: string[]): Promise<string[] | undefined>
+	
+	/**
+	 * A handle to determine which files from a given context directory will get passed to execute.
+	 * @param contextDirectory A directory from the context
+	 */
+	directoryHandle(contextDirectory: string): Promise<string[] | undefined>;
+	
+	emptyHandle(): Promise<string[] | undefined>;
+	
+	initExecute(files: string[]): Promise<void>;
+
+	execute(file: string, env: EnvironmentConfig): Promise<void>;
+}
+
+export async function init(hostCommand: HostCommand, context: ExtensionCommandContext, args: any[]): Promise<string[] | undefined> {
+	const c = getFullContext(context, args);
+	let files: string[] | undefined;
+
+	if (c.mode === ContextMode.FILES) {
+		files = await hostCommand.filesHandle(c.files);
+	}
+	else if (c.mode === ContextMode.DIRECTORY) {
+		files = await hostCommand.directoryHandle(c.files[0]);
+	}
+	else {
+		files = await hostCommand.emptyHandle();
+	}
+	if (!files || files.length === 0) return;
+
+	hostCommand.initExecute(files);
+}
+
+export async function chooseWorkspaceThenPrompt(hostCommand: HostCommand): Promise<string[] | undefined> {
+	let workspace = await workspaceQuickPick();
+	if (!workspace) return;
+	return hostCommand.directoryHandle(workspace.fsPath);
+}
+
+export async function promptOpenDialog(directory: string, openLabel: string) {
+	let options = {
+		defaultUri: vscode.Uri.file(directory),
+		canSelectMany: true,
+		openLabel: openLabel
+	};
+	let uris = await vscode.window.showOpenDialog(options)
+	if (!uris) return;
+	return uris.map(uri => uri.fsPath);
+}
+
+export async function upload(hostCommand: HostCommand, files: string[]) {
+	for (let file of files) {
+		let workspaceFile = new WorkspaceFile(file);
+		let envs: EnvironmentConfig[];
+		try {
+			envs = await workspaceFile.environmentObjects;
+		}
+		catch (error) {
+			console.log(error);
+			return;
 		}
 
-		envMap.forEach(async (files, env) => {
-			for (let file of files) {
-				await this.execute(file, env).catch(error => {
-					this.logError(`${error} in ${env.name}`);
-				})
-			}
+		let env = await getCommandenvConfigQuickPick(envs, file);
+		if (!env) return;
+		let chosenEnv = env;
+		await hostCommand.execute(file, env).catch(error => {
+			logger.error(`${error} in ${chosenEnv.name}`);
 		})
 	}
 }
 
+export async function download(hostCommand: HostCommand, files: string[]) {
+	let envMap: Map<EnvironmentConfig, string[]> = new Map();
+	for (let file of files) {
+		let workspaceFile = new WorkspaceFile(file);
+		let envs: EnvironmentConfig[];
+		try {
+			envs = await workspaceFile.environmentObjects;
+		}
+		catch (error) {
+			logger.error(error);
+			return;
+		}
+
+		for (let env of envs) {
+			let envFiles = envMap.get(env);
+			if (!envFiles) envFiles = []
+			envMap.set(env, envFiles.concat(file));
+		}
+	}
+
+	envMap.forEach(async (files, env) => {
+		for (let file of files) {
+			await hostCommand.execute(file, env).catch(error => {
+				logger.error(`${error} in ${env.name}`);
+			})
+		}
+	})
+}
+
 export const enum ContextMode {
-	FILES = 1,
-	DIRECTORY = 2,
-	EMPTY = 3
+	FILES,
+	DIRECTORY,
+	EMPTY,
 }
 
 

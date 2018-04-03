@@ -1,17 +1,14 @@
 import * as vscode from 'vscode';
-import { DIR_MAPPINGS } from './hostCommand';
+import { DIR_MAPPINGS, icons } from './hostCommand';
 import * as path from 'path';
 import * as environment from '../common/environment';
 import { GetTable } from './getTable';
 
 export class RefreshTable extends GetTable {
 
-	icon: string;
-	command: string;
-
 	constructor() {
 		super();
-		this.icon = GetTable.icons.REFRESH;
+		this.icon = icons.REFRESH;
 		this.command = 'psl.refreshTable';
 		this.commandVerb = 'REFRESH';
 	}
