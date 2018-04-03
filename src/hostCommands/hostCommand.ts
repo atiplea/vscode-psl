@@ -31,7 +31,6 @@ export const enum icons {
 	WARN = '⚠',
 }
 
-
 export interface HostCommand {
 	icon: string;
 	command: string;
@@ -55,10 +54,22 @@ export interface HostCommand {
 	 */
 	directoryHandle(contextDirectory: string): Promise<string[] | undefined>;
 	
+	/**
+	 * A handle to determine which files from no context will get passed to execute.
+	 */
 	emptyHandle(): Promise<string[] | undefined>;
 	
+	/**
+	 * The main engine for the excecute method that will collect environment information
+	 * @param files 
+	 */
 	initExecute(files: string[]): Promise<void>;
 
+	/**
+	 * The execution that occurs for every individual HostCommand.
+	 * @param file The file being executed
+	 * @param env The target environment 
+	 */
 	execute(file: string, env: EnvironmentConfig): Promise<void>;
 }
 
