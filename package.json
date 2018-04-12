@@ -350,6 +350,11 @@
           "group": "PSL.2"
         },
         {
+          "when": "resourceLangId == profileColumn && !explorerResourceIsFolder",
+          "command": "psl.compileAndLink",
+          "group": "PSL.2"
+        },
+        {
           "when": "resourceLangId == psl && !explorerResourceIsFolder",
           "command": "psl.testCompile",
           "group": "PSL.2"
@@ -531,6 +536,11 @@
           "group": "PSL.2"
         },
         {
+          "when": "resourceLangId == profileColumn",
+          "command": "psl.compileAndLink",
+          "group": "PSL.2"
+        },
+        {
           "when": "resourceLangId == profileTable",
           "command": "psl.sendTable",
           "group": "PSL.1"
@@ -638,6 +648,11 @@
           "when": "resourceLangId == profileTable"
         },
         {
+          "command": "psl.compileAndLink",
+          "group": "navigation@-202",
+          "when": "resourceLangId == profileColumn"
+        },
+        {
           "command": "psl.runPSL",
           "group": "navigation@-201",
           "when": "resourceLangId == psl"
@@ -710,7 +725,7 @@
     "jest": "^22.1.4",
     "ts-jest": "^22.0.2",
     "tslint": "^5.9.1",
-    "typescript": "^2.7.1",
+    "typescript": "^2.8.1",
     "vscode": "^1.1.10"
   },
   "dependencies": {

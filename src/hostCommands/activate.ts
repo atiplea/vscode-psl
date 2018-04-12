@@ -91,7 +91,7 @@ function registerProfileElementContext() {
 	window.onDidChangeActiveTextEditor(setIsProfileElementContext)
 }
 
-function setIsProfileElementContext(textEditor: TextEditor) {
+function setIsProfileElementContext(textEditor: TextEditor | undefined) {
 	let isElement: boolean = false;
 	if (textEditor) {
 		isElement = PROFILE_ELEMENTS.indexOf(path.extname(textEditor.document.fileName)) >= 0;

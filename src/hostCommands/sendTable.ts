@@ -1,4 +1,3 @@
-import * as vscode from 'vscode';
 import {Send} from './send';
 import { icons } from './hostCommand';
 import * as path from 'path';
@@ -23,24 +22,9 @@ export class SendTable extends Send {
 		for (let tableDirectory of directories) {
 			let tableName = path.basename(tableDirectory);
 			let tableFiles = await fs.readdir(tableDirectory)
-			let sortedFiles = tableFiles.filter(f => f.startsWith(tableName)).sort(tableFirst);
-			let resp = await vscode.window.showInformationMessage(`Send ${sortedFiles.length} elements of ${tableName}?`, { modal: true }, 'Yes');
-			if (resp !== 'Yes') continue;
+			let sortedFiles = tableFiles.filter(f => f.startsWith(tableName.toUpperCase())).sort(this.tableFirst).map(f => path.join(tableDirectory, f));
 			returnFiles = returnFiles.concat(sortedFiles);
 		}
 		return returnFiles;
 	}
-
-}
-
-function tableFirst(a: string, b: string) {
-	let aIsTable = a.endsWith('.TBL');
-	let bIsTable = b.endsWith('.TBL');
-	if (aIsTable && !bIsTable) {
-		return -1;
-	}
-	else if (bIsTable && !aIsTable) {
-		return 1;
-	}
-	return a.localeCompare(b);
 }

@@ -15,6 +15,10 @@ export class Send extends hc.UploadCommand {
 		this.dialogLabel = 'Send';
 	}
 
+	async filesHandle(contextFiles: string[]) {
+		return contextFiles.sort(this.tableFirst);
+	}
+
 	async execute(file: string, env: environment.EnvironmentConfig) {
 		await hc.executeWithProgress(`${path.basename(file)} SEND`, async () => {
 			await hc.saveDocument(file);
@@ -24,5 +28,18 @@ export class Send extends hc.UploadCommand {
 			connection.close();
 			this.logSuccess(`${path.basename(file)} SEND to ${env.name} succeeded`);
 		});
+	}
+
+
+	tableFirst(a: string, b: string) {
+		let aIsTable = a.endsWith('.TBL');
+		let bIsTable = b.endsWith('.TBL');
+		if (aIsTable && !bIsTable) {
+			return -1;
+		}
+		else if (bIsTable && !aIsTable) {
+			return 1;
+		}
+		return a.localeCompare(b);
 	}
 }

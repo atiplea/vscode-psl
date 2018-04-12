@@ -85,7 +85,9 @@ export abstract class HostCommand {
 	 * @param contextDirectory A directory from the context
 	 */
 	async directoryHandle(contextDirectory: string): Promise<string[] | undefined> {
-		return promptOpenDialog(contextDirectory, this.dialogLabel);
+		let files = await promptOpenDialog(contextDirectory, this.dialogLabel);
+		if (!files) return;
+		if (files.length > 0) return this.filesHandle(files);
 	}
 
 	/**
@@ -97,14 +99,14 @@ export abstract class HostCommand {
 
 	/**
 	 * The main engine for the excecute method that will collect environment information.
-	 * @param files 
+	 * @param files
 	 */
 	abstract initExecute(files: string[]): Promise<void>;
 
 	/**
 	 * The execution that occurs for every individual HostCommand.
 	 * @param file The file being executed
-	 * @param env The target environment 
+	 * @param env The target environment
 	 */
 	abstract execute(file: string, env: EnvironmentConfig): Promise<void>;
 }
@@ -119,7 +121,7 @@ export abstract class UploadCommand extends HostCommand {
 				envs = await workspaceFile.environmentObjects;
 			}
 			catch (error) {
-				console.log(error);
+				this.logError(error);
 				return;
 			}
 
@@ -169,7 +171,7 @@ export abstract class TableCommand extends DownloadCommand {
 
 	abstract filesHandle(contextFiles: string[]): Promise<string[] | undefined>;
 
-	abstract directoryHandle(contextDirectory: string): Promise<string[] | undefined>;	
+	abstract directoryHandle(contextDirectory: string): Promise<string[] | undefined>;
 
 	async emptyHandle() {
 		let chosenWorkspace = await workspaceQuickPick();
@@ -200,7 +202,7 @@ export abstract class TableCommand extends DownloadCommand {
 		};
 		return vscode.window.showInputBox(inputOptions);
 	}
-	
+
 	async execute(targetDirectory: string, env: EnvironmentConfig) {
 		await executeWithProgress(`${this.tableName} ${this.commandVerb}`, async () => {
 			logger.info(`${this.tableName} TABLE ${this.commandVerb} from ${env.name}`);

@@ -13,8 +13,8 @@ export class RefreshTable extends GetTable {
 		this.commandVerb = 'REFRESH';
 	}
 
-	async filesHandle(files: string[]) {
-		let fsPath = files[0];
+	async filesHandle(contextFiles: string[]) {
+		let fsPath = contextFiles[0];
 		if (path.extname(fsPath) === '.TBL') {
 			this.tableName = path.basename(fsPath).split('.TBL')[0];
 		}

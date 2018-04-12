@@ -29,13 +29,13 @@ export class TestCompile extends hc.UploadCommand {
 			let testCompileSucceeded = pslDiagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error).length === 0;
 			let testCompileWarning = pslDiagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning).length > 0;
 			if (!testCompileSucceeded) {
-				this.logSuccess(`${path.basename(file)} TEST COMPILE in ${env.name} failed` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
+				this.logError(`${path.basename(file)} TEST COMPILE in ${env.name} failed` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			else if (testCompileWarning) {
 				this.logWarn(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded with warning` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			else {
-				this.logError(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
+				this.logSuccess(`${path.basename(file)} TEST COMPILE in ${env.name} succeeded` + ('\n' + output).split('\n').join('\n' + ' '.repeat(20)))
 			}
 			PSLDiagnostic.setDiagnostics(pslDiagnostics, env.name, file);
 		});
@@ -52,7 +52,7 @@ function parseCompilerOutput(compilerOutput: string, document: vscode.TextDocume
     In module: ZFeatureToggleUtilities
 
     Source: ZFeatureToggleUtilities.PROC
-    	#PROPEYDEF dummy class = String private node = "dummy"
+        #PROPEYDEF dummy class = String private node = "dummy"
     %PSL-E-SYNTAX: Unexpected compiler command: PROPEYDEF
     At source code line: 25 in subroutine:
 
