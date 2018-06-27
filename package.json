@@ -26,6 +26,23 @@
   ],
   "main": "./out/src/extension",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pslView",
+          "title": "PSL",
+          "icon": "icons/psl.svg"
+        }
+      ]
+    },
+    "views": {
+      "pslView": [
+        {
+          "id": "pslExplorer",
+          "name": "Explorer"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "profileTable",
