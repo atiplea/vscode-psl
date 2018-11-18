@@ -9,29 +9,29 @@ const icon = utils.icons.REFRESH;
 export async function refreshElementHandler(context: utils.ExtensionCommandContext): Promise<void> {
 	let c = utils.getFullContext(context);
 	if (c.mode === utils.ContextMode.FILE) {
-		return refreshElement(c.fsPath).catch(() => {});
+		return refreshElement(c.fsPath, true).catch();
 	}
 	else if (c.mode === utils.ContextMode.DIRECTORY) {
-		let files = await vscode.window.showOpenDialog({defaultUri: vscode.Uri.file(c.fsPath), canSelectMany: true, openLabel: 'Refresh'})
+		let files = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(c.fsPath), canSelectMany: true, openLabel: 'Refresh' })
 		if (!files) return;
 		for (let fsPath of files.map(file => file.fsPath)) {
-			await refreshElement(fsPath).catch(() => {});
+			await refreshElement(fsPath, false).catch();
 		}
 	}
 	else {
 		let quickPick = await environment.workspaceQuickPick();
 		if (!quickPick) return;
 		let chosenEnv = quickPick;
-		let files = await vscode.window.showOpenDialog({defaultUri: vscode.Uri.file(chosenEnv.fsPath), canSelectMany: true, openLabel: 'Refresh'})
+		let files = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(chosenEnv.fsPath), canSelectMany: true, openLabel: 'Refresh' })
 		if (!files) return;
 		for (let fsPath of files.map(file => file.fsPath)) {
-			await refreshElement(fsPath).catch(() => {})
+			await refreshElement(fsPath, false).catch();
 		}
 	}
 	return;
 }
 
-async function refreshElement(fsPath: string) {
+async function refreshElement(fsPath: string, showTextDocument: boolean) {
 	if (!fs.statSync(fsPath).isFile()) return;
 	let env;
 	return utils.executeWithProgress(`${icon} ${path.basename(fsPath)} REFRESH`, async () => {
@@ -58,7 +58,7 @@ async function refreshElement(fsPath: string) {
 		await fs.writeFile(fsPath, output);
 		utils.logger.info(`${utils.icons.SUCCESS} ${icon} ${path.basename(fsPath)} REFRESH from ${env.name} succeeded`);
 		connection.close();
-		await vscode.window.showTextDocument(doc);
+		if (showTextDocument) await vscode.window.showTextDocument(doc);
 	}).catch((e: Error) => {
 		if (env && env.name) {
 			utils.logger.error(`${utils.icons.ERROR} ${icon} error in ${env.name} ${e.message}`);
@@ -83,7 +83,7 @@ export async function refreshTableHandler(context: utils.ExtensionCommandContext
 			return;
 		}
 		let targetDir = path.dirname(c.fsPath);
-		return refreshTable(tableName, targetDir).catch(() => {});
+		return refreshTable(tableName, targetDir).catch(() => { });
 	}
 }
 
