@@ -126,7 +126,7 @@ function parseCompilerOutput(compilerOutput: string, document: vscode.TextDocume
 	return pslDiagnostics;
 }
 
-function canTestCompileFile(document: vscode.TextDocument, fsPath: string): boolean {	
+function canTestCompileFile(document: vscode.TextDocument, fsPath: string): boolean {
 	let compilable: boolean = false;
 	if (vscode.languages.match(extension.PSL_MODE, document)) {
 		compilable = true;
@@ -145,7 +145,7 @@ function canTestCompileFile(document: vscode.TextDocument, fsPath: string): bool
 		else if (vscode.languages.match(extension.TBL_MODE, document)) {
 			fileTypeDescription = "Table Definition"
 		}
-		else if (vscode.languages.match(extension.TRIG_MODE, document)) {			
+		else if (vscode.languages.match(extension.TRIG_MODE, document)) {
 			fileTypeDescription = "Trigger"
 		}
 		if (fileTypeDescription != "") {

@@ -1,34 +1,42 @@
-import * as vscode from 'vscode';
 import * as path from 'path';
+import * as vscode from 'vscode';
 
 import { commands, ExtensionContext, TextEditor, window } from 'vscode';
+import { compileAndLinkHandler } from './compileAndLink';
 import { getElementHandler, getTableHandler } from './get';
 import { refreshElementHandler, refreshTableHandler } from './refresh';
-import { testCompileHandler } from './testCompile';
-import { compileAndLinkHandler } from './compileAndLink';
-import { sendElementHandler, sendTableHandler } from './send';
 import { runPSLHandler } from './run';
+import { sendElementHandler, sendTableHandler } from './send';
+import { testCompileHandler } from './testCompile';
 
 const PROFILE_ELEMENTS = [
+	'.BATCH',
+	'.COL',
+	'.DAT',
 	'.FKY',
 	'.G',
 	'.IDX',
 	'.JFD',
-	'.M',
 	'.m',
+	'.M',
 	'.PPL',
+	'.PROC',
 	'.properties',
 	'.PROPERTIES',
-	'.PSLX',
+	'.psl',
+	'.PSL',
 	'.pslx',
-	'.PSLXTRA',
+	'.PSLX',
 	'.pslxtra',
-	'.PSQL',
+	'.PSLXTRA',
 	'.psql',
+	'.PSQL',
 	'.QRY',
 	'.RPT',
-	'.SCR'
-]
+	'.SCR',
+	'.TBL',
+	'.TRIG',
+];
 
 export function activate(context: ExtensionContext) {
 
@@ -36,49 +44,43 @@ export function activate(context: ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
-			'psl.getElement', getElementHandler
-		)
+			'psl.getElement', getElementHandler,
+		),
 	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
-			'psl.getTable', getTableHandler
-		)
+			'psl.getTable', getTableHandler,
+		),
 	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
-			'psl.refreshElement', refreshElementHandler
-		)
+			'psl.refreshElement', refreshElementHandler,
+		),
 	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
-			'psl.sendElement', sendElementHandler
-		)
+			'psl.sendElement', sendElementHandler,
+		),
 	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
-			'psl.testCompile', testCompileHandler
-		)
+			'psl.testCompile', testCompileHandler,
+		),
 	);
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
-			'psl.compileAndLink', compileAndLinkHandler
-		)
-	);
-
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
-			'psl.runPSL', runPSLHandler
-		)
+			'psl.compileAndLink', compileAndLinkHandler,
+		),
 	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
-			'psl.hostCommandDialog', hostCommandHandler
-		)
+			'psl.runPSL', runPSLHandler,
+		),
 	);
 
 	// context.subscriptions.push(
@@ -89,18 +91,17 @@ export function activate(context: ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
-			'psl.sendTable', sendTableHandler
-		)
+			'psl.sendTable', sendTableHandler,
+		),
 	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
-			'psl.refreshTable', refreshTableHandler
-		)
+			'psl.refreshTable', refreshTableHandler,
+		),
 	);
 
 }
-
 
 // async function testSendLinkHandler (context: utils.ExtensionCommandContext): Promise<void> {
 // 	let c = utils.getFullContext(context);
@@ -132,32 +133,19 @@ export function activate(context: ExtensionContext) {
 // 	}
 // }
 
-export async function hostCommandHandler() {
-	let choice = await vscode.window.showQuickPick([
-		{label: `$(sync)\tRefresh from Host`, description: '', handler: refreshElementHandler},
-		{label: `$(arrow-down)\tGet from Host`, description: '', handler: getElementHandler},
-		{label: `$(database)\tTable Get from Host`, description: '', handler: getTableHandler},
-		{label: `$(arrow-up)\tSend to Host`, description: '', handler: sendElementHandler},
-		{label: `$(link)\tCompile and Link`, description: '', handler: compileAndLinkHandler},
-		{label: `$(gear)\tTest Compile`, description: '', handler: testCompileHandler},
-		{label: `$(triangle-right)\tRun PSL`, description: '', handler: runPSLHandler}
-		// {label: `$(ellipsis)\tTest Send Link`, description: '', handler: testSendLinkHandler},
-	], {
-		placeHolder: 'Select a command to open a dialog'
-	});
-	if (!choice) return;
-	choice.handler({dialog: true, fsPath: ''});
-}
-
 function registerProfileElementContext() {
-	if (window.activeTextEditor) setIsProfileElementContext(window.activeTextEditor)
-	window.onDidChangeActiveTextEditor(setIsProfileElementContext)
+	if (window.activeTextEditor) setIsProfileElementContext(window.activeTextEditor);
+	window.onDidChangeActiveTextEditor(setIsProfileElementContext);
 }
 
 function setIsProfileElementContext(textEditor: TextEditor) {
 	let isElement: boolean = false;
 	if (textEditor) {
-		isElement = PROFILE_ELEMENTS.indexOf(path.extname(textEditor.document.fileName)) >= 0;
+		isElement = isProfileElement(textEditor.document.fileName);
 	}
-	commands.executeCommand('setContext', 'psl.isProfileElement', isElement)
+	commands.executeCommand('setContext', 'psl.isProfileElement', isElement);
+}
+
+export function isProfileElement(fileName: string) {
+	return PROFILE_ELEMENTS.indexOf(path.extname(fileName)) >= 0;
 }
