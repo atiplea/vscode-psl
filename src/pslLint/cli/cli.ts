@@ -32,7 +32,7 @@ interface StoredDiagnostic {
 	fsPath: string;
 }
 
-const diagnosticStore: Map<string, StoredDiagnostic[]> = new Map();
+let diagnosticStore: Map<string, StoredDiagnostic[]>;
 let useConfig: boolean;
 
 function getMessage(storedDiagnostic: StoredDiagnostic) {
@@ -66,7 +66,7 @@ async function readFile(filename: string): Promise<number> {
 	return errorCount;
 }
 
-export async function readPath(fileString: string) {
+async function readPath(fileString: string) {
 	const files = fileString.split(';').filter(x => x);
 	const promises: Array<Promise<any>> = [];
 	let exitCode = 0;
@@ -105,10 +105,11 @@ async function processConfig(): Promise<void> {
 	});
 }
 
-async function outputResults(reportFileName?: string) {
-	if (reportFileName) {
-		await generateCodeQualityReport(reportFileName);
+async function outputResults(codeClimateOutput?: string, simpleReportOutput?: string) {
+	if (codeClimateOutput || simpleReportOutput) {
+		const report = await generateCodeQualityReport(codeClimateOutput, simpleReportOutput);
 		console.log('Finished report.');
+		return report;
 	}
 	else {
 		printOutputToConsole();
@@ -127,11 +128,11 @@ function printOutputToConsole() {
 	}
 }
 
-async function generateCodeQualityReport(reportFileName: string) {
+async function generateCodeQualityReport(codeClimateOutput: string, simpleReportOutput: string) {
 	const counts: {
 		[ruleName: string]: number;
 	} = {};
-	const issues: CodeClimateIssue[] = [];
+	const codeClimateIssues: CodeClimateIssue[] = [];
 	for (const ruleDiagnostics of diagnosticStore.values()) {
 		for (const storedDiagnostic of ruleDiagnostics) {
 			const { diagnostic, fsPath } = storedDiagnostic;
@@ -143,24 +144,28 @@ async function generateCodeQualityReport(reportFileName: string) {
 				counts[diagnostic.ruleName] = counts[diagnostic.ruleName] + 1;
 			}
 			if (diagnostic.ruleName === 'MemberCamelCase') continue;
-			const issue: CodeClimateIssue = {
-				check_name: diagnostic.ruleName,
-				description: `[${diagnostic.ruleName}] ${diagnostic.message.trim().replace(/\.$/, '')}`,
-				fingerprint: hashObject(diagnostic),
-				location: {
-					lines: {
-						begin: diagnostic.range.start.line + 1,
-						end: diagnostic.range.end.line + 1,
+			if (codeClimateOutput) {
+				const codeClimateIssue: CodeClimateIssue = {
+					check_name: diagnostic.ruleName,
+					description: `[${diagnostic.ruleName}] ${diagnostic.message.trim().replace(/\.$/, '')}`,
+					fingerprint: hashObject(diagnostic),
+					location: {
+						lines: {
+							begin: diagnostic.range.start.line + 1,
+							end: diagnostic.range.end.line + 1,
+						},
+						path: fsPath,
 					},
-					path: fsPath,
-				},
-			};
-			issues.push(issue);
+				};
+				codeClimateIssues.push(codeClimateIssue);
+			}
 		}
 	}
 	console.log('Diagnostics found in repository:');
 	(console as any).table(counts);
-	await fs.writeFile(reportFileName, JSON.stringify(issues));
+	if (codeClimateOutput) await fs.writeFile(codeClimateOutput, JSON.stringify(codeClimateIssues));
+	if (simpleReportOutput) await fs.writeFile(simpleReportOutput, JSON.stringify(counts));
+	return counts;
 }
 
 function hashObject(object: any) {
@@ -180,26 +185,34 @@ function getCliArgs() {
 	commander
 		.name('psl-lint')
 		.usage('<fileString>')
-		.option('-o, --output <output>', 'Name of output file')
+		.option('-o, --output <output>', 'Name of output file in codeclimate format')
+		.option('-r, --report', 'Name of output file for simple json report')
 		.description('fileString    a ; delimited string of file paths')
 		.parse(process.argv);
-	return { fileString: commander.args[0], reportFileName: commander.output };
+	return { fileString: commander.args[0], codeClimateOutput: commander.output, simpleReportOutput: commander.report };
+}
+
+export async function lint(fileString: string, codeClimateOutput?: string, simpleReportOutput?: string) {
+	diagnosticStore = new Map();
+	await processConfig();
+	await readPath(fileString);
+	return outputResults(codeClimateOutput, simpleReportOutput);
 }
 
 (async function main() {
 	if (require.main !== module) {
 		return;
 	}
-	const { fileString, reportFileName } = getCliArgs();
+	const { fileString, codeClimateOutput, simpleReportOutput } = getCliArgs();
 	if (fileString) {
-
+		diagnosticStore = new Map();
 		await processConfig();
 
-		if (reportFileName) console.log('Starting report.');
+		if (codeClimateOutput) console.log('Starting report.');
 		else console.log('Starting lint.');
 
 		const exitCode = await readPath(fileString);
-		await outputResults(reportFileName);
+		await outputResults(codeClimateOutput, simpleReportOutput);
 		process.exit(exitCode);
 	}
 	else {
