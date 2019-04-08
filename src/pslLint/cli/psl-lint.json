@@ -1,0 +1,17 @@
+{
+	"version": 1,
+	"include": {
+		"Z*.PROC": ["*"],
+		"Z*.BATCH": ["*"],
+		"*-Z*.TRIG": ["*"],
+		"Z*.TRIG": ["*"],
+		"Z*.TBL": ["*"],
+		"Z*.COL": ["*"],
+		"*-Z*.COL": ["*"],
+		"*.psl": ["*"],
+		"*": ["TodoInfo", "RuntimeStart"]
+	},
+	"exclude": {
+	    "*.TRIG": ["MemberCamelCase"]
+	}
+}

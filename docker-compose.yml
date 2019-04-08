@@ -1,0 +1,44 @@
+version: "3.2"
+services:
+  full_lint:
+    image: profilehost.docker.ing.net/node-alpine-git
+    entrypoint: ./entrypoint.sh
+    working_dir: /app/
+    volumes:
+      - type: bind
+        source: .
+        target: /app/
+      - type: volume
+        source: repo
+        target: /clone/
+
+  debug:
+    image: profilehost.docker.ing.net/node-alpine-git
+    entrypoint: ./debug.sh
+    working_dir: /app/
+    ports: 
+      - 5858:5858
+    volumes:
+      - type: bind
+        source: .
+        target: /app/
+      - type: volume
+        source: repo
+        target: /clone/
+
+  sources:
+    image: profilehost.docker.ing.net/node-alpine-git
+    entrypoint: sh -c 'if [ -d $${repo_path} ]; then cd $${repo_path}; git checkout $${default_branch}; local_branches=$$(git branch | grep -v $${default_branch}); for br in $${local_branches}; do git branch -D $${br}; done; git fetch --tags; git pull; else git clone file:///ProfileHost; cd ProfileHost; git fetch --tags; fi'
+    working_dir: /clone/
+    volumes:
+      - type: bind
+        source: C:\Workspace\ProfileHost\
+        target: /ProfileHost/
+      - type: volume
+        source: repo
+        target: /clone/
+    environment:
+      repo_path: /clone/ProfileHost
+      default_branch: develop
+volumes:
+  repo:

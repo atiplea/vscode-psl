@@ -105,9 +105,12 @@ async function processConfig(): Promise<void> {
 	});
 }
 
-async function outputResults(codeClimateOutput?: string, simpleReportOutput?: string) {
-	if (codeClimateOutput || simpleReportOutput) {
-		const report = await generateCodeQualityReport(codeClimateOutput, simpleReportOutput);
+async function outputResults(codeClimateOutput?: string) {
+	const counts = aggregate();
+	console.log('Diagnostics found in repository:');
+	(console as any).table(counts);
+	if (codeClimateOutput) {
+		const report = await generateCodeQualityReport(codeClimateOutput);
 		console.log('Finished report.');
 		return report;
 	}
@@ -128,14 +131,13 @@ function printOutputToConsole() {
 	}
 }
 
-async function generateCodeQualityReport(codeClimateOutput: string, simpleReportOutput: string) {
+function aggregate() {
 	const counts: {
 		[ruleName: string]: number;
 	} = {};
-	const codeClimateIssues: CodeClimateIssue[] = [];
 	for (const ruleDiagnostics of diagnosticStore.values()) {
 		for (const storedDiagnostic of ruleDiagnostics) {
-			const { diagnostic, fsPath } = storedDiagnostic;
+			const { diagnostic } = storedDiagnostic;
 			const count = counts[diagnostic.ruleName];
 			if (!count) {
 				counts[diagnostic.ruleName] = 1;
@@ -143,6 +145,16 @@ async function generateCodeQualityReport(codeClimateOutput: string, simpleReport
 			else {
 				counts[diagnostic.ruleName] = counts[diagnostic.ruleName] + 1;
 			}
+		}
+	}
+	return counts;
+}
+
+async function generateCodeQualityReport(codeClimateOutput: string) {
+	const codeClimateIssues: CodeClimateIssue[] = [];
+	for (const ruleDiagnostics of diagnosticStore.values()) {
+		for (const storedDiagnostic of ruleDiagnostics) {
+			const { diagnostic, fsPath } = storedDiagnostic;
 			if (diagnostic.ruleName === 'MemberCamelCase') continue;
 			if (codeClimateOutput) {
 				const codeClimateIssue: CodeClimateIssue = {
@@ -161,11 +173,7 @@ async function generateCodeQualityReport(codeClimateOutput: string, simpleReport
 			}
 		}
 	}
-	console.log('Diagnostics found in repository:');
-	(console as any).table(counts);
 	if (codeClimateOutput) await fs.writeFile(codeClimateOutput, JSON.stringify(codeClimateIssues));
-	if (simpleReportOutput) await fs.writeFile(simpleReportOutput, JSON.stringify(counts));
-	return counts;
 }
 
 function hashObject(object: any) {
@@ -186,24 +194,23 @@ function getCliArgs() {
 		.name('psl-lint')
 		.usage('<fileString>')
 		.option('-o, --output <output>', 'Name of output file in codeclimate format')
-		.option('-r, --report', 'Name of output file for simple json report')
 		.description('fileString    a ; delimited string of file paths')
 		.parse(process.argv);
-	return { fileString: commander.args[0], codeClimateOutput: commander.output, simpleReportOutput: commander.report };
+	return { fileString: commander.args[0], codeClimateOutput: commander.output };
 }
 
-export async function lint(fileString: string, codeClimateOutput?: string, simpleReportOutput?: string) {
+export async function lint(fileString: string, codeClimateOutput?: string) {
 	diagnosticStore = new Map();
 	await processConfig();
 	await readPath(fileString);
-	return outputResults(codeClimateOutput, simpleReportOutput);
+	return outputResults(codeClimateOutput);
 }
 
 (async function main() {
 	if (require.main !== module) {
 		return;
 	}
-	const { fileString, codeClimateOutput, simpleReportOutput } = getCliArgs();
+	const { fileString, codeClimateOutput } = getCliArgs();
 	if (fileString) {
 		diagnosticStore = new Map();
 		await processConfig();
@@ -212,7 +219,7 @@ export async function lint(fileString: string, codeClimateOutput?: string, simpl
 		else console.log('Starting lint.');
 
 		const exitCode = await readPath(fileString);
-		await outputResults(codeClimateOutput, simpleReportOutput);
+		await outputResults(codeClimateOutput);
 		process.exit(exitCode);
 	}
 	else {
