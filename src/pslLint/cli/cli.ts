@@ -105,7 +105,7 @@ async function processConfig(): Promise<void> {
 	});
 }
 
-async function outputResults(codeClimateOutput?: string) {
+async function outputResults(codeClimateOutput?: string, print?: boolean) {
 	const counts = aggregate();
 	console.log('Diagnostics found in repository:');
 	(console as any).table(counts);
@@ -115,9 +115,10 @@ async function outputResults(codeClimateOutput?: string) {
 		return report;
 	}
 	else {
-		printOutputToConsole();
+		if (print) printOutputToConsole();
 		console.log('Finished lint.');
 	}
+	return counts;
 }
 
 function printOutputToConsole() {
@@ -203,7 +204,7 @@ export async function lint(fileString: string, codeClimateOutput?: string) {
 	diagnosticStore = new Map();
 	await processConfig();
 	await readPath(fileString);
-	return outputResults(codeClimateOutput);
+	return outputResults(codeClimateOutput, false);
 }
 
 (async function main() {
