@@ -11,7 +11,7 @@ import { getConfig, matchConfig } from './config';
 import { ParsedDocument } from '../parser/parser';
 import {
 	MemberCamelCase, MemberLength, MemberLiteralCase,
-	MemberStartsWithV, PropertyIsDummy, PropertyIsDuplicate,
+	MemberStartsWithV, PropertyIsDummy, PropertyIsDuplicate, PublicDeclarationCamelCase,
 } from './elementsConventionChecker';
 import { MethodDocumentation, MethodSeparator, TwoEmptyLines } from './methodDoc';
 import { MultiLineDeclare } from './multiLineDeclare';
@@ -48,7 +48,9 @@ const propertyRules: PropertyRule[] = [
 	new PropertyIsDummy(),
 	new PropertyIsDuplicate(),
 ];
-const declarationRules: DeclarationRule[] = [];
+const declarationRules: DeclarationRule[] = [
+	new PublicDeclarationCamelCase(),
+];
 const parameterRules: ParameterRule[] = [];
 
 export function getDiagnostics(

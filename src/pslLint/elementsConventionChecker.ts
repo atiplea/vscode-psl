@@ -1,7 +1,7 @@
-import { Member, MemberClass, Method, Property } from '../parser/parser';
+import { Member, MemberClass, Method, Property, Declaration } from '../parser/parser';
 import {
 	Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, MemberRule,
-	MethodRule, PropertyRule,
+	MethodRule, PropertyRule, DeclarationRule,
 } from './api';
 
 export class MethodStartsWithZ extends MethodRule {
@@ -148,22 +148,14 @@ export class MemberCamelCase extends MemberRule {
 			if (method.batch) return;
 		}
 		if (member.memberClass === MemberClass.declaration) {
-			if (member.id.value === 'ER' || member.id.value === 'ER') {
+			if (member.id.value === 'ER' || member.id.value === 'RM') {
 				return;
 			}
 		}
 
 		if (member.id.value.charAt(0) > 'z' || member.id.value.charAt(0) < 'a') {
 			if (isPublicDeclaration(member)) {
-				const diagnostic = new Diagnostic(
-					member.id.getRange(),
-					`Declaration "${member.id.value}" is public and does not start with lower case.`,
-					this.ruleName,
-					DiagnosticSeverity.Information,
-				);
-				diagnostic.source = 'lint';
-				diagnostic.member = member;
-				diagnostics.push(diagnostic);
+				return;
 			}
 			else {
 				diagnostics.push(createDiagnostic(
@@ -174,6 +166,26 @@ export class MemberCamelCase extends MemberRule {
 				));
 			}
 		}
+	}
+}
+
+export class PublicDeclarationCamelCase extends DeclarationRule {
+
+	report(declaration: Declaration): Diagnostic[] {
+		if (declaration.modifiers.findIndex(x => x.value === 'public') === -1) return;
+		const diagnostics: Diagnostic[] = [];
+
+		const diagnostic = new Diagnostic(
+			declaration.id.getRange(),
+			`Declaration "${declaration.id.value}" is public and does not start with lower case.`,
+			this.ruleName,
+			DiagnosticSeverity.Information,
+		);
+		diagnostic.source = 'lint';
+		diagnostic.member = declaration;
+		diagnostics.push(diagnostic);
+
+		return diagnostics;
 	}
 }
 
