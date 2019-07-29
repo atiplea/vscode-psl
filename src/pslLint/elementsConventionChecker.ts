@@ -147,6 +147,11 @@ export class MemberCamelCase extends MemberRule {
 			const method = member as Method;
 			if (method.batch) return;
 		}
+		if (member.memberClass === MemberClass.declaration) {
+			if (member.id.value === 'ER' || member.id.value === 'ER') {
+				return;
+			}
+		}
 
 		if (member.id.value.charAt(0) > 'z' || member.id.value.charAt(0) < 'a') {
 			if (isPublicDeclaration(member)) {
@@ -193,6 +198,9 @@ export class MemberLength extends MemberRule {
 		}
 	}
 }
+
+const vRegex = /^v[0-9A-Z]/;
+
 export class MemberStartsWithV extends MemberRule {
 
 	report(member: Member): Diagnostic[] {
@@ -205,6 +213,7 @@ export class MemberStartsWithV extends MemberRule {
 
 	checkStartsWithV(member: Member, diagnostics: Diagnostic[]): void {
 		if (member.id.value.charAt(0) !== 'v') return;
+		if (!member.id.value.match(vRegex)) return;
 		if (isPublicDeclaration(member)) {
 			diagnostics.push(createDiagnostic(
 				member,
