@@ -66,7 +66,7 @@ async function readFile(filename: string): Promise<number> {
 	return errorCount;
 }
 
-async function readPath(fileString: string) {
+async function readPath(fileString: string): Promise<number> {
 	const files = fileString.split(';').filter(x => x);
 	const promises: Array<Promise<any>> = [];
 	let exitCode = 0;
@@ -76,10 +76,10 @@ async function readPath(fileString: string) {
 		const stat = await fs.lstat(absolutePath);
 		if (stat.isDirectory()) {
 			const fileNames = await fs.readdir(absolutePath);
-			for (const fileName of fileNames) {
+			promises.push(...fileNames.map(fileName => {
 				const absolutePathInDir = path.resolve(path.join(absolutePath, fileName));
-				await readPath(absolutePathInDir);
-			}
+				return readPath(absolutePathInDir);
+			}));
 		}
 		else if (stat.isFile()) {
 			const promise = readFile(absolutePath).then(errorCount => {
