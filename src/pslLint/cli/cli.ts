@@ -33,152 +33,120 @@ interface StoredDiagnostic {
 	fsPath: string;
 }
 
-let diagnosticStore: Map<string, StoredDiagnostic[]>;
-let useConfig: boolean;
+type DiagnosticStore =  Map<string, StoredDiagnostic[]>;
 
-function getMessage(storedDiagnostic: StoredDiagnostic) {
-	const { diagnostic, fsPath } = storedDiagnostic;
-	const range = `${diagnostic.range.start.line + 1},${diagnostic.range.start.character + 1}`;
-	const severity = `${DiagnosticSeverity[diagnostic.severity].substr(0, 4).toUpperCase()}`;
-	return `${fsPath}(${range}) [${severity}][${diagnostic.source}][${diagnostic.ruleName}] ${diagnostic.message}`;
-}
+class Linter {
+	diagnosticStore: DiagnosticStore;
+	warnings: number = 0;
+	errors: number = 0;
 
-async function readFile(filename: string): Promise<number> {
-	let errorCount = 0;
-	const fsPath = path.relative(process.cwd(), filename);
-	if (!ProfileComponent.isProfileComponent(fsPath)) {
-		return errorCount;
+	private useConfig: boolean;
+
+	constructor() {
+		this.diagnosticStore = new Map();
 	}
-	const textDocument = (await fs.readFile(fsPath)).toString();
-	const parsedDocument = ProfileComponent.isPsl(fsPath) ? parseText(textDocument) : undefined;
-	const profileComponent = new ProfileComponent(fsPath, textDocument);
 
-	const diagnostics = getDiagnostics(profileComponent, parsedDocument, useConfig);
+	async lint(fileString: string): Promise<void> {
+		return this.processConfig().then(_ => this.readPath(fileString));
+	}
 
-	diagnostics.forEach(diagnostic => {
-		if (diagnostic.severity === DiagnosticSeverity.Warning || diagnostic.severity === DiagnosticSeverity.Error) {
-			errorCount += 1;
+	private async processConfig(): Promise<void> {
+		const configPath = path.join(process.cwd(), 'psl-lint.json');
+		await fs.lstat(configPath).then(async () => {
+			await setConfig(configPath);
+			this.useConfig = true;
+		}).catch(() => {
+			this.useConfig = false;
+		});
+	}
+
+	private async readPath(fileString: string): Promise<void> {
+		const files = fileString.split(';').filter(x => x);
+		const promises: Array<Promise<any>> = [];
+		for (const filePath of files) {
+			const absolutePath = path.resolve(filePath);
+			if (!absolutePath) continue;
+			const stat = await fs.lstat(absolutePath);
+			if (stat.isDirectory()) {
+				const fileNames = await fs.readdir(absolutePath);
+				promises.push(...fileNames.map(fileName => {
+					const absolutePathInDir = path.resolve(path.join(absolutePath, fileName));
+					return this.readPath(absolutePathInDir);
+				}));
+			}
+			else if (stat.isFile()) {
+				const promise = this.readFile(absolutePath).catch((e: Error) => {
+					if (e.message) console.error(absolutePath, e.message, e.stack);
+					else console.error(absolutePath, e);
+				});
+				promises.push(promise);
+			}
 		}
-		const mapDiagnostics = diagnosticStore.get(diagnostic.source);
-		if (!mapDiagnostics) diagnosticStore.set(diagnostic.source, [{ diagnostic, fsPath }]);
-		else mapDiagnostics.push({ diagnostic, fsPath });
-	});
+		await Promise.all(promises);
+	}
 
-	return errorCount;
+	private async readFile(filename: string): Promise<void> {
+		const fsPath = path.relative(process.cwd(), filename);
+		if (!ProfileComponent.isProfileComponent(fsPath)) return;
+
+		const textDocument = (await fs.readFile(fsPath)).toString();
+		const parsedDocument = ProfileComponent.isPsl(fsPath) ? parseText(textDocument) : undefined;
+		const profileComponent = new ProfileComponent(fsPath, textDocument);
+
+		const diagnostics = getDiagnostics(profileComponent, parsedDocument, this.useConfig);
+
+		diagnostics.forEach(diagnostic => {
+			if (diagnostic.severity === DiagnosticSeverity.Warning) this.warnings += 1;
+			if (diagnostic.severity === DiagnosticSeverity.Error) this.errors += 1;
+
+			const mapDiagnostics = this.diagnosticStore.get(diagnostic.ruleName);
+			if (!mapDiagnostics) this.diagnosticStore.set(diagnostic.ruleName, [{ diagnostic, fsPath }]);
+			else mapDiagnostics.push({ diagnostic, fsPath });
+		});
+	}
 }
 
-async function readPath(fileString: string): Promise<number> {
-	const files = fileString.split(';').filter(x => x);
-	const promises: Array<Promise<any>> = [];
-	let exitCode = 0;
-	for (const filePath of files) {
-		const absolutePath = path.resolve(filePath);
-		if (!absolutePath) continue;
-		const stat = await fs.lstat(absolutePath);
-		if (stat.isDirectory()) {
-			const fileNames = await fs.readdir(absolutePath);
-			promises.push(...fileNames.map(fileName => {
-				const absolutePathInDir = path.resolve(path.join(absolutePath, fileName));
-				return readPath(absolutePathInDir);
-			}));
+async function generateCodeClimateIssues(diagnosticStore: DiagnosticStore): Promise<CodeClimateIssue[]> {
+	const codeClimateIssues: CodeClimateIssue[] = [];
+	for (const ruleDiagnostics of diagnosticStore.values()) {
+		for (const storedDiagnostic of ruleDiagnostics) {
+			const { diagnostic, fsPath } = storedDiagnostic;
+			if (diagnostic.ruleName === MemberCamelCase.name) continue;
+			const codeClimateIssue: CodeClimateIssue = {
+				check_name: diagnostic.ruleName,
+				description: `[${diagnostic.ruleName}] ${diagnostic.message.trim().replace(/\.$/, '')}`,
+				fingerprint: hashObject(diagnostic),
+				location: {
+					lines: {
+						begin: diagnostic.range.start.line + 1,
+						end: diagnostic.range.end.line + 1,
+					},
+					path: fsPath,
+				},
+			};
+			codeClimateIssues.push(codeClimateIssue);
+
 		}
-		else if (stat.isFile()) {
-			const promise = readFile(absolutePath).then(errorCount => {
-				exitCode += errorCount;
-			}).catch((e: Error) => {
-				if (e.message) console.error(absolutePath, e.message, e.stack);
-				else console.error(absolutePath, e);
-			});
-			promises.push(promise);
-		}
 	}
-	await Promise.all(promises);
-	return exitCode;
+	return codeClimateIssues;
 }
 
-async function processConfig(): Promise<void> {
-	const configPath = path.join(process.cwd(), 'psl-lint.json');
-	await fs.lstat(configPath).then(async () => {
-		await setConfig(configPath);
-		useConfig = true;
-	}).catch(() => {
-		useConfig = false;
-	});
-}
-
-async function outputResults(codeClimateOutput?: string, print?: boolean) {
-	const counts = aggregate();
-	console.log('Diagnostics found in repository:');
-	(console as any).table(counts);
-	if (codeClimateOutput) {
-		const report = await generateCodeQualityReport(codeClimateOutput);
-		console.log('Finished report.');
-		return report;
-	}
-	else {
-		if (print) printOutputToConsole();
-		console.log('Finished lint.');
-	}
-	return counts;
-}
-
-function printOutputToConsole() {
-	for (const source of diagnosticStore.keys()) {
-		const diagnostics = diagnosticStore.get(source);
-		const word = diagnosticStore.get(source).length === 1 ? 'diagnostic' : 'diagnostics';
-		console.log(`[${source}] ${diagnostics.length} ${word}:`);
+function printDiagnostics(diagnosticStore: DiagnosticStore) {
+	for (const ruleName of diagnosticStore.keys()) {
+		const diagnostics = diagnosticStore.get(ruleName);
+		const word = diagnostics.length === 1 ? 'diagnostic' : 'diagnostics';
+		console.log(`[${ruleName}] ${diagnostics.length} ${word}:`);
 		diagnostics.forEach(diagnostic => {
 			console.log(getMessage(diagnostic));
 		});
 	}
 }
 
-function aggregate() {
-	const counts: {
-		[ruleName: string]: number;
-	} = {};
-	let total = 0;
-	for (const ruleDiagnostics of diagnosticStore.values()) {
-		for (const storedDiagnostic of ruleDiagnostics) {
-			const { diagnostic } = storedDiagnostic;
-			const count = counts[diagnostic.ruleName];
-			if (!count) {
-				counts[diagnostic.ruleName] = 1;
-			}
-			else {
-				counts[diagnostic.ruleName] = counts[diagnostic.ruleName] + 1;
-			}
-			total += 1;
-		}
-	}
-	counts.Total = total;
-	return counts;
-}
-
-async function generateCodeQualityReport(codeClimateOutput: string) {
-	const codeClimateIssues: CodeClimateIssue[] = [];
-	for (const ruleDiagnostics of diagnosticStore.values()) {
-		for (const storedDiagnostic of ruleDiagnostics) {
-			const { diagnostic, fsPath } = storedDiagnostic;
-			if (diagnostic.ruleName === MemberCamelCase.name) continue;
-			if (codeClimateOutput) {
-				const codeClimateIssue: CodeClimateIssue = {
-					check_name: diagnostic.ruleName,
-					description: `[${diagnostic.ruleName}] ${diagnostic.message.trim().replace(/\.$/, '')}`,
-					fingerprint: hashObject(diagnostic),
-					location: {
-						lines: {
-							begin: diagnostic.range.start.line + 1,
-							end: diagnostic.range.end.line + 1,
-						},
-						path: fsPath,
-					},
-				};
-				codeClimateIssues.push(codeClimateIssue);
-			}
-		}
-	}
-	if (codeClimateOutput) await fs.writeFile(codeClimateOutput, JSON.stringify(codeClimateIssues));
+function getMessage(storedDiagnostic: StoredDiagnostic) {
+	const { diagnostic, fsPath } = storedDiagnostic;
+	const range = `${diagnostic.range.start.line + 1},${diagnostic.range.start.character + 1}`;
+	const severity = `${DiagnosticSeverity[diagnostic.severity].substr(0, 4).toUpperCase()}`;
+	return `${fsPath}(${range}) [${severity}][${diagnostic.source}][${diagnostic.ruleName}] ${diagnostic.message}`;
 }
 
 function hashObject(object: any) {
@@ -204,32 +172,43 @@ function getCliArgs(): { fileString: string, codeClimateOutput: string } {
 	return { fileString: commander.args[0], codeClimateOutput: commander.output };
 }
 
-export async function lint(fileString: string, codeClimateOutput?: string) {
-	diagnosticStore = new Map();
-	await processConfig();
-	await readPath(fileString);
-	return outputResults(codeClimateOutput, false);
+export async function lint(fileString: string): Promise<DiagnosticStore> {
+	const linter = new Linter();
+	await linter.lint(fileString);
+	return linter.diagnosticStore;
 }
 
 (async function main() {
-	if (require.main !== module) {
-		return;
-	}
+	if (require.main !== module) return;
+
 	const { fileString, codeClimateOutput } = getCliArgs();
 	if (fileString) {
-		diagnosticStore = new Map();
-		await processConfig();
+		const linter = new Linter();
+		console.log('Starting lint.');
+		await linter.lint(fileString);
 
-		if (codeClimateOutput) console.log('Starting report.');
-		else console.log('Starting lint.');
+		if (codeClimateOutput) {
+			console.log('Generating report');
+			const codeClimateIssues = generateCodeClimateIssues(linter.diagnosticStore);
+			await fs.writeFile(codeClimateOutput, JSON.stringify(codeClimateIssues));
+		}
+		else {
+			printDiagnostics(linter.diagnosticStore);
+		}
 
-		const exitCode = await readPath(fileString);
-		await outputResults(codeClimateOutput, !codeClimateOutput);
-		process.exit(exitCode);
+		const summary: {[key: string]: number} = {};
+		let total = 0;
+		[...linter.diagnosticStore.keys()].sort().forEach(key => {
+			const count = linter.diagnosticStore.get(key).length;
+			summary[key] = count;
+			total += count;
+		});
+		summary.Total = total;
+		console.table(summary);
+		console.log('Finished lint.');
+		if (linter.warnings || linter.errors) process.exit(1);
 	}
 	else {
 		console.log('Nothing to lint.');
 	}
 })();
-
-// psl-lint $(git diff master...${CI_BUILD_REF_NAME} --name-only | tr "\n" ";")
