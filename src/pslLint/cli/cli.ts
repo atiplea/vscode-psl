@@ -8,6 +8,7 @@ import { parseText } from '../../parser/parser';
 import { getDiagnostics } from '../activate';
 import { Diagnostic, DiagnosticSeverity, ProfileComponent } from '../api';
 import { setConfig } from '../config';
+import { MemberCamelCase } from '../elementsConventionChecker';
 
 interface CodeClimateIssue {
 	categories?: string[];
@@ -136,6 +137,7 @@ function aggregate() {
 	const counts: {
 		[ruleName: string]: number;
 	} = {};
+	let total = 0;
 	for (const ruleDiagnostics of diagnosticStore.values()) {
 		for (const storedDiagnostic of ruleDiagnostics) {
 			const { diagnostic } = storedDiagnostic;
@@ -146,8 +148,10 @@ function aggregate() {
 			else {
 				counts[diagnostic.ruleName] = counts[diagnostic.ruleName] + 1;
 			}
+			total += 1;
 		}
 	}
+	counts.Total = total;
 	return counts;
 }
 
@@ -156,7 +160,7 @@ async function generateCodeQualityReport(codeClimateOutput: string) {
 	for (const ruleDiagnostics of diagnosticStore.values()) {
 		for (const storedDiagnostic of ruleDiagnostics) {
 			const { diagnostic, fsPath } = storedDiagnostic;
-			if (diagnostic.ruleName === 'MemberCamelCase') continue;
+			if (diagnostic.ruleName === MemberCamelCase.name) continue;
 			if (codeClimateOutput) {
 				const codeClimateIssue: CodeClimateIssue = {
 					check_name: diagnostic.ruleName,
@@ -190,7 +194,7 @@ function hashObject(object: any) {
 	return hash;
 }
 
-function getCliArgs() {
+function getCliArgs(): { fileString: string, codeClimateOutput: string } {
 	commander
 		.name('psl-lint')
 		.usage('<fileString>')
@@ -220,7 +224,7 @@ export async function lint(fileString: string, codeClimateOutput?: string) {
 		else console.log('Starting lint.');
 
 		const exitCode = await readPath(fileString);
-		await outputResults(codeClimateOutput);
+		await outputResults(codeClimateOutput, !codeClimateOutput);
 		process.exit(exitCode);
 	}
 	else {

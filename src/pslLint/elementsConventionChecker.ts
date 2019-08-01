@@ -38,7 +38,7 @@ export class PropertyIsDummy extends PropertyRule {
 	isCalledDummy(member: Member, diagnostics: Diagnostic[]): void {
 		if (member.id.value.toLowerCase() === 'dummy') {
 			diagnostics.push(
-				createDiagnostic(member, 'Usage of "dummy" property is discouraged', DiagnosticSeverity.Information, this.ruleName),
+				createDiagnostic(member, 'usage is discouraged', DiagnosticSeverity.Information, this.ruleName),
 			);
 		}
 	}
@@ -172,9 +172,7 @@ export class MemberCamelCase extends MemberRule {
 export class PublicDeclarationCamelCase extends DeclarationRule {
 
 	report(declaration: Declaration): Diagnostic[] {
-		if (declaration.modifiers.findIndex(x => x.value === 'public') === -1) return;
-		const diagnostics: Diagnostic[] = [];
-
+		if (declaration.modifiers.findIndex(x => x.value === 'public') === -1) return [];
 		const diagnostic = new Diagnostic(
 			declaration.id.getRange(),
 			`Declaration "${declaration.id.value}" is public and does not start with lower case.`,
@@ -183,9 +181,7 @@ export class PublicDeclarationCamelCase extends DeclarationRule {
 		);
 		diagnostic.source = 'lint';
 		diagnostic.member = declaration;
-		diagnostics.push(diagnostic);
-
-		return diagnostics;
+		return [diagnostic];
 	}
 }
 

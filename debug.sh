@@ -9,4 +9,3 @@ cd ${repo}
 git checkout -f develop
 
 node --inspect-brk=0.0.0.0:5858 ${main} --output=/dev/null "dataqwik/procedure;dataqwik/batch;dataqwik/trigger;test/psl;dataqwik/table"
-

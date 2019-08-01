@@ -44,7 +44,7 @@ describe('Parameter tests', () => {
 		expect(reports[0].message).toBe(`Parameter "flaggedParam" referenced inside Runtime.start but not in variable list.`);
 	});
 
-	test('Method in middle with new variable', () => {
+	test('Method in middle with new variable double commit', () => {
 		const reports = utils.diagnosticsOnLine(42, runtimeDiagnostics);
 		const diagnostic = reports[0] as api.Diagnostic;
 		const relatedArray = diagnostic.relatedInformation as api.DiagnosticRelatedInformation[];
@@ -63,5 +63,10 @@ describe('Parameter tests', () => {
 		const reports = utils.diagnosticsOnLine(49, runtimeDiagnostics);
 		expect(reports.length).toBe(1);
 		expect(reports[0].message).toBe(`Declaration "flagged" referenced inside Runtime.start but not in variable list.`);
+	});
+
+	test('No property', () => {
+		const reports = utils.diagnosticsOnLine(55, runtimeDiagnostics);
+		expect(reports.length).toBe(0);
 	});
 });

@@ -1,7 +1,7 @@
 import { Member, MemberClass, Method } from '../parser/parser';
 import {
-	BinaryOperator, Identifier,
-	StringLiteral, SyntaxKind, Value,
+	BinaryOperator, forEachChild,
+	Identifier, Node, Statement, StringLiteral, SyntaxKind, Value,
 } from '../parser/statementParser';
 import { Range, Token } from '../parser/tokenizer';
 import { getCommentsOnLine } from '../parser/utilities';
@@ -69,7 +69,7 @@ export class RuntimeStart extends MethodRule {
 					const startLine = lastStart.id.position.line;
 					const commitLine = runtimeMethod.id.position.line;
 					const identifierTokens: Token[] = this.getAllIdentifersInRange(
-						this.parsedDocument.tokens,
+						method.statements,
 						startLine,
 						commitLine,
 					);
@@ -91,10 +91,30 @@ export class RuntimeStart extends MethodRule {
 		}
 
 	}
-	private getAllIdentifersInRange(tokens: Token[], startLine: number, commitLine: number): Token[] {
-		return tokens.filter(token => {
-			return token.position.line > startLine && token.position.line < commitLine;
+	private getAllIdentifersInRange(statements: Statement[], startLine: number, commitLine: number): Token[] {
+		const identifierTokens: Token[] = [];
+		const statementsInRange = statements.filter(statement => {
+			return statement.action.position.line > startLine && statement.action.position.line < commitLine;
 		});
+		statementsInRange.forEach(statement => {
+			const isCall = (node: Node) => {
+				if (node.kind === SyntaxKind.BINARY_OPERATOR) {
+					const binOp = node as BinaryOperator;
+					return binOp.operator.length === 1 && (binOp.operator[0].isPeriod() || binOp.operator[0].isCaret());
+				}
+			};
+			forEachChild(statement, (node, parent) => {
+				if (node.kind === SyntaxKind.IDENTIFIER) {
+					const identifier = node as Identifier;
+					const notRightHandIdentifier = !isCall(parent) || (parent as BinaryOperator).right !== node;
+					if (notRightHandIdentifier) {
+						identifierTokens.push(identifier.id);
+					}
+				}
+				return true;
+			});
+		});
+		return identifierTokens;
 	}
 
 	private createDiagnostic(lastStart: Value, variable: Member, identifiers: Token[], diagnostics: Diagnostic[]) {

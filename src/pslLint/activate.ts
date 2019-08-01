@@ -9,6 +9,7 @@ import { getConfig, matchConfig } from './config';
  * Import rules here.
  */
 import { ParsedDocument } from '../parser/parser';
+import { RedundantDoBlock } from './doBlock';
 import {
 	MemberCamelCase, MemberLength, MemberLiteralCase,
 	MemberStartsWithV, PropertyIsDummy, PropertyIsDuplicate, PublicDeclarationCamelCase,
@@ -19,7 +20,6 @@ import { MethodParametersOnNewLine } from './parameters';
 import { RuntimeStart } from './runtime';
 import { TblColDocumentation } from './tblcolDoc';
 import { TodoInfo } from './todos';
-import { RedundantDoStatement } from './doBlock';
 
 /**
  * Add new rules here to have them checked at the appropriate time.
@@ -30,7 +30,7 @@ const fileDefinitionRules: FileDefinitionRule[] = [
 ];
 const pslRules: PslRule[] = [
 	new TodoInfo(),
-	new RedundantDoStatement(),
+	new RedundantDoBlock(),
 ];
 const memberRules: MemberRule[] = [
 	new MemberCamelCase(),
@@ -114,7 +114,7 @@ class RuleSubscription {
 
 	reportRules(): Diagnostic[] {
 		const addDiagnostics = (rules: ProfileComponentRule[], ...args: any[]) => {
-			rules.forEach(rule => this.diagnostics.push(...rule.report(...args)));
+			rules.forEach(rule => this.diagnostics.push(...rule.report(...args) || []));
 		};
 
 		addDiagnostics(this.componentRules);

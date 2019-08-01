@@ -43,4 +43,7 @@ public void method1()
 		
 	}
 
+	while CONT & ds1.next() do {
+		
+	}
 	quit

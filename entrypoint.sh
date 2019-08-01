@@ -12,11 +12,11 @@ npm link
 cd ${repo}
 git checkout -f develop
 cp psl-lint.json ${json}
-tags="v19.11.0 v19.12-rc0";
+tags="v19.11.0 develop";
 for tag in $tags; do
 	git checkout -f develop
 	git checkout -f ${tag};
 	cp ${json} .
 	echo "############ ${tag} ############"
-	psl-lint --output=/dev/null 'dataqwik/procedure;dataqwik/batch;dataqwik/trigger;test/psl;dataqwik/table'
+	time psl-lint --output=/dev/null 'dataqwik/procedure;dataqwik/batch;dataqwik/trigger;test/psl;dataqwik/table'
 done;

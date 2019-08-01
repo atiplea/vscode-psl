@@ -19,9 +19,11 @@ export enum SyntaxKind {
 	TYPE_STATEMENT,
 	VARIABLE_DECLARATION,
 	TYPE_IDENTIFIER,
+	ELSE_STATEMENT,
 }
 
 enum OPERATOR_VALUE {
+	AMPERSAND = '&',
 	AND_LITERAL = 'and',
 	APOSTROPHE = '\'',
 	AT = '@',
@@ -63,6 +65,7 @@ enum STATEMENT_KEYWORD {
 	DO = 'do',
 	SET = 'set',
 	IF = 'if',
+	ELSE = 'else',
 	CATCH = 'catch',
 	FOR = 'for',
 	QUIT = 'quit',
@@ -90,6 +93,7 @@ const UNARY_OPERATORS: Operator[] = [
 ];
 
 const BINARY_OPERATORS: Operator[] = [
+	{ value: OPERATOR_VALUE.AMPERSAND },
 	{ value: OPERATOR_VALUE.AND_LITERAL },
 	{ value: OPERATOR_VALUE.APOSTROPHE, appendable: true },
 	{ value: OPERATOR_VALUE.AT },
@@ -251,6 +255,10 @@ export class StatementParser {
 				loadFunction = () => this.parseExpression();
 				kind = SyntaxKind.IF_STATEMENT;
 				return loadCommaSeparatedExpressions();
+
+			case STATEMENT_KEYWORD.ELSE:
+				this.next();
+				return { action, expressions: [], kind: SyntaxKind.ELSE_STATEMENT };
 
 			case STATEMENT_KEYWORD.CATCH:
 				loadFunction = () => this.parseExpression();
@@ -685,7 +693,7 @@ function getUnaryOperator(tokenValue: string, includeRet?: boolean): Operator | 
 	return operator;
 }
 
-export function forEachChild(node: Node, f: (n: Node) => boolean) {
+export function forEachChild(node: Node, f: (n: Node, p?: Node) => boolean, parent?: Node) {
 	let goDeeper: boolean = false;
 	if (!node) return;
 	switch (node.kind) {
@@ -698,66 +706,66 @@ export function forEachChild(node: Node, f: (n: Node) => boolean) {
 		case SyntaxKind.FOR_STATEMENT:
 		case SyntaxKind.CATCH_STATEMENT:
 		case SyntaxKind.TYPE_STATEMENT:
-			goDeeper = f(node);
+			goDeeper = f(node, parent);
 			if (!goDeeper) return;
 			const statement = node as Statement;
 			statement.expressions.forEach(expression => {
 				if (!expression) return;
-				forEachChild(expression, f);
+				forEachChild(expression, f, statement);
 			});
 			break;
 		case SyntaxKind.ASSIGNMENT:
 		case SyntaxKind.BINARY_OPERATOR:
-			goDeeper = f(node);
+			goDeeper = f(node, parent);
 			if (!goDeeper) return;
 			const assignment = node as BinaryOperator;
 			const left = assignment.left;
 			if (left && left.kind === SyntaxKind.MULTIPLE_VARIABLE_SET) {
 				(left as MultiSet).variables.forEach(n => {
-					forEachChild(n, f);
+					forEachChild(n, f, assignment);
 				});
 			}
 			else if (left) {
-				forEachChild(left, f);
+				forEachChild(left, f, assignment);
 			}
 			const right = assignment.right;
 			if (right) {
-				forEachChild(right, f);
+				forEachChild(right, f, assignment);
 			}
 			break;
 		case SyntaxKind.POST_CONDITION:
-			goDeeper = f(node);
+			goDeeper = f(node, parent);
 			if (!goDeeper) return;
 			const postCondition = node as PostCondition;
-			if (postCondition.condition) forEachChild(postCondition.condition, f);
+			if (postCondition.condition) forEachChild(postCondition.condition, f, postCondition);
 			if (postCondition.expression) {
 				const expression = postCondition.expression;
 				if (Array.isArray(expression)) {
 					expression.forEach(n => {
-						forEachChild(n, f);
+						forEachChild(n, f, postCondition);
 					});
 				}
 				else if (expression) {
-					forEachChild(expression, f);
+					forEachChild(expression, f, postCondition);
 				}
 			}
 			break;
 		case SyntaxKind.IDENTIFIER:
 		case SyntaxKind.TYPE_IDENTIFIER:
-			goDeeper = f(node);
+			goDeeper = f(node, parent);
 			if (!goDeeper) return;
 			const identifier = node as Identifier;
-			if (identifier.args) identifier.args.forEach(arg => forEachChild(arg, f));
+			if (identifier.args) identifier.args.forEach(arg => forEachChild(arg, f, identifier));
 			break;
 		case SyntaxKind.VARIABLE_DECLARATION:
-			goDeeper = f(node);
+			goDeeper = f(node, parent);
 			if (!goDeeper) return;
 			const declaration = node as DeclarationStatement;
-			if (declaration.args) declaration.args.forEach(arg => forEachChild(arg, f));
-			f(declaration.type);
+			if (declaration.args) declaration.args.forEach(arg => forEachChild(arg, f, declaration));
+			f(declaration.type, declaration);
 		case SyntaxKind.NUMERIC_LITERAL:
 		case SyntaxKind.STRING_LITERAL:
-			f(node);
+			f(node, parent);
 			break;
 		default:
 			break;

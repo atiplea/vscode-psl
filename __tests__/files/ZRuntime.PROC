@@ -51,4 +51,11 @@ public static void func(String flaggedParam, String notFlaggedParam)
 	set (flagged, NOLITERAL) = ""
 	do Runtime.commit()
 
+	type String prop = ""
+	// do not flag property with same name
+	do Runtime.start("BA")
+	type Object object
+	set object.prop = ""
+	do Runtime.commit()
+
 	quit
