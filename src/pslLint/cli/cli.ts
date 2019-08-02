@@ -33,7 +33,7 @@ interface StoredDiagnostic {
 	fsPath: string;
 }
 
-type DiagnosticStore =  Map<string, StoredDiagnostic[]>;
+type DiagnosticStore = Map<string, StoredDiagnostic[]>;
 
 class Linter {
 	diagnosticStore: DiagnosticStore;
@@ -139,6 +139,7 @@ function printDiagnostics(diagnosticStore: DiagnosticStore) {
 		diagnostics.forEach(diagnostic => {
 			console.log(getMessage(diagnostic));
 		});
+		console.log('');
 	}
 }
 
@@ -146,7 +147,7 @@ function getMessage(storedDiagnostic: StoredDiagnostic) {
 	const { diagnostic, fsPath } = storedDiagnostic;
 	const range = `${diagnostic.range.start.line + 1},${diagnostic.range.start.character + 1}`;
 	const severity = `${DiagnosticSeverity[diagnostic.severity].substr(0, 4).toUpperCase()}`;
-	return `${fsPath}(${range}) [${severity}][${diagnostic.source}][${diagnostic.ruleName}] ${diagnostic.message}`;
+	return `${fsPath}(${range}) [${severity}][${diagnostic.ruleName}] ${diagnostic.message}`;
 }
 
 function hashObject(object: any) {
@@ -196,7 +197,7 @@ export async function lint(fileString: string): Promise<DiagnosticStore> {
 			printDiagnostics(linter.diagnosticStore);
 		}
 
-		const summary: {[key: string]: number} = {};
+		const summary: { [key: string]: number } = {};
 		let total = 0;
 		[...linter.diagnosticStore.keys()].sort().forEach(key => {
 			const count = linter.diagnosticStore.get(key).length;
