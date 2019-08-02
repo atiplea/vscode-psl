@@ -179,32 +179,8 @@ export abstract class DeclarationRule extends PslRule {
 	abstract report(declaration: Declaration, method?: Method): Diagnostic[];
 }
 
-export type FileDefinitionRuleConstructor = new (profileComponent: ProfileComponent) => FileDefinitionRule;
-export type ProfileComponentRuleConstructor = new (profileComponent: ProfileComponent) => ProfileComponentRule;
-export type PslRuleConstructor = new (
-	profileComponent: ProfileComponent,
-	parsedDocument: ParsedDocument,
-) => PslRule;
-export type MemberRuleConstructor = new (
-	profileComponent: ProfileComponent,
-	parsedDocument: ParsedDocument,
-) => MemberRule;
-export type PropertyRuleConstructor = new (
-	profileComponent: ProfileComponent,
-	parsedDocument: ParsedDocument,
-) => PropertyRule;
-export type MethodRuleConstructor = new (
-	profileComponent: ProfileComponent,
-	parsedDocument: ParsedDocument,
-) => MethodRule;
-export type ParameterRuleConstructor = new (
-	profileComponent: ProfileComponent,
-	parsedDocument: ParsedDocument,
-) => ParameterRule;
-export type DeclarationRuleConstructor = new (
-	profileComponent: ProfileComponent,
-	parsedDocument: ParsedDocument,
-) => DeclarationRule;
+export type RuleCtor<T> = new (profileComponent: ProfileComponent) => T;
+export type PslRuleCtor<T> = new (profileComponent: ProfileComponent, parsedDocument: ParsedDocument ) => T;
 
 type GetTextMethod = (lineNumber: number) => string;
 

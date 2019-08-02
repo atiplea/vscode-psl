@@ -199,9 +199,11 @@ export async function lint(fileString: string): Promise<DiagnosticStore> {
 
 		const summary: { [key: string]: number } = {};
 		let total = 0;
-		[...linter.diagnosticStore.keys()].sort().forEach(key => {
-			const count = linter.diagnosticStore.get(key).length;
-			summary[key] = count;
+		[...linter.diagnosticStore.entries()].sort((a, b) => {
+			return  b[1].length - a[1].length;
+		}).forEach(entry => {
+			const count = entry[1].length;
+			summary[entry[0]] = count;
 			total += count;
 		});
 		summary.Total = total;
