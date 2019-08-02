@@ -154,6 +154,27 @@ The `psl.gtmDebug` context value guarantees the shortcuts are only enabled when 
 * `psl.gtmDebug`: Set true to keep GT.M Debug on by default.
 * `psl.trailingNewline`: Adds a trailing newline after a "Get" or "Refresh". The default behavior is to not change the output.
 
+### psl-lint
+
+This extension includes support for checking PSL against common coding standards. The setting `psl.lint` is by default set to `config`, meaning the linting module will activate upon finding a `psl-lint.json` configuration file. Here is a sample:
+
+```
+{
+	"version": 1,
+	"include": {
+		"Z*": ["*"],
+		"*": ["TodoInfo"]
+	},
+	"exclude": {
+		"ZRPC*.PROC": ["MemberCamelCase"]
+	}
+}
+```
+
+Within `include` and `exclude` mappings from filename patterns to rules. These are glob-style patterns ("Z*" will match all files that start with Z). The rules are written in an array, and must be explicitly stated. The only exception is the "*" rule, which matches all rules.
+
+[For more information about which rules are available, and how the linting can be used outside of vscode, visit the package at npm](https://www.npmjs.com/package/psl-lint).
+
 ## Development
 
 If you would like to join the development of this extension, you will need to install [node.js](https://nodejs.org/en/) (with npm) in order to install the dependencies.
