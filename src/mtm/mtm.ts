@@ -320,7 +320,7 @@ export class MtmConnection {
 		const sendingMessage = this.prepareSendingMessage(detail, prepareString);
 		await this.socket.send(sendingMessage);
 		let message = await this.socket.onceData();
-		const {totalBytes, startByte} = utils.unpack(message);
+		const { totalBytes, startByte } = utils.unpack(message);
 		let messageLength = message.length;
 
 		while (messageLength < totalBytes) {

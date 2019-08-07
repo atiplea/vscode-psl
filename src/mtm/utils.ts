@@ -322,8 +322,11 @@ export function unpack(message: Buffer): { totalBytes: number, startByte: number
 }
 
 function longMessageLength(message: Buffer): { totalBytes: number, startByte: number } {
+	// the third byte of the message tells us how many bytes are used to encode the length
 	const numberOfBytes = message.readUInt8(2);
 	const lastLengthByte = 3 + numberOfBytes;
+
+	// slice the message to just use the bytes that encode message length
 	const messageLengthBytes = message.slice(3, lastLengthByte);
 	let totalBytes = 0;
 	for (let index = 0; index < messageLengthBytes.length; index++) {
