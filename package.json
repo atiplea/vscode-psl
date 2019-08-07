@@ -253,6 +253,11 @@
         }
       },
       {
+        "command": "psl.getCompiledCode",
+        "title": "Get Compiled Code",
+        "category": "PSL"
+      },
+      {
         "command": "psl.runTest",
         "title": "Run Test",
         "category": "PSL"
@@ -293,6 +298,11 @@
         {
           "when": "explorerResourceIsFolder",
           "command": "psl.getTable",
+          "group": "PSL.3"
+        },
+        {
+          "when": "explorerResourceIsFolder",
+          "command": "psl.getCompiledCode",
           "group": "PSL.3"
         },
         {
@@ -379,6 +389,11 @@
           "when": "resourceLangId == psl && !explorerResourceIsFolder",
           "command": "psl.runPSL",
           "group": "PSL.2"
+        },
+        {
+          "when": "resourceLangId == psl && !explorerResourceIsFolder",
+          "command": "psl.getCompiledCode",
+          "group": "PSL.3"
         },
         {
           "when": "resourceLangId == psl && !explorerResourceIsFolder",
@@ -508,6 +523,21 @@
           "when": "resourceLangId == psl",
           "command": "psl.runPSL",
           "group": "PSL.2"
+        },
+        {
+          "when": "resourceLangId == psl",
+          "command": "psl.getCompiledCode",
+          "group": "PSL.4"
+        },
+        {
+          "when": "resourceLangId == profileBatch",
+          "command": "psl.getCompiledCode",
+          "group": "PSL.4"
+        },
+        {
+          "when": "resourceLangId == profileTrigger",
+          "command": "psl.getCompiledCode",
+          "group": "PSL.4"
         },
         {
           "when": "resourceFilename =~ /^(Ut|St)/ && resourceLangId == psl && psl.runTestContext",

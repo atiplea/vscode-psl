@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { compileAndLinkHandler } from './compileAndLink';
-import { getElementHandler, getTableHandler } from './get';
+import { getElementHandler, getTableHandler, getCompiledCodeHandler } from './get';
 
 import { refreshElementHandler, refreshTableHandler } from './refresh';
 import { runPSLHandler } from './run';
@@ -50,7 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
 		{ id: 'psl.sendTable', callback: sendTableHandler },
 		{ id: 'psl.refreshTable', callback: refreshTableHandler },
 		// Custom commands
-		// { id: 'psl.getCompiledCode', callback: getCompiledCodeHandler },
+		{ id: 'psl.getCompiledCode', callback: getCompiledCodeHandler },
 		{ id: `psl.${testContext.command}`, callback: runTestHandler },
 		{ id: `psl.${coverageContext.command}`, callback: runCoverageHandler },
 	];
