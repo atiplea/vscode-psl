@@ -179,9 +179,6 @@ export abstract class DeclarationRule extends PslRule {
 	abstract report(declaration: Declaration, method?: Method): Diagnostic[];
 }
 
-export type RuleCtor<T> = new (profileComponent: ProfileComponent) => T;
-export type PslRuleCtor<T> = new (profileComponent: ProfileComponent, parsedDocument: ParsedDocument ) => T;
-
 type GetTextMethod = (lineNumber: number) => string;
 
 /**

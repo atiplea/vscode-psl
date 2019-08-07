@@ -1,12 +1,8 @@
 import * as path from 'path';
 import { ParsedDocument } from '../parser/parser';
 import {
-	DeclarationRule, Diagnostic, FileDefinitionRule,
-	MemberRule, MethodRule, ParameterRule,
-	ProfileComponent, ProfileComponentRule, PropertyRule,
-	PslRule,
-	PslRuleCtor,
-	RuleCtor,
+	DeclarationRule, Diagnostic, FileDefinitionRule, MemberRule, MethodRule, ParameterRule, ProfileComponent,
+	ProfileComponentRule, PropertyRule, PslRule,
 } from './api';
 import { getConfig, matchConfig } from './config';
 
@@ -15,8 +11,8 @@ import { getConfig, matchConfig } from './config';
  */
 import { RedundantDoBlock } from './doBlock';
 import {
-	MemberCamelCase, MemberLength, MemberLiteralCase,
-	MemberStartsWithV, PropertyIsDummy, PropertyIsDuplicate, PublicDeclarationCamelCase,
+	MemberCamelCase, MemberLength, MemberLiteralCase, MemberStartsWithV, PropertyIsDummy, PropertyIsDuplicate,
+	PublicDeclarationCamelCase,
 } from './elementsConventionChecker';
 import { MethodDocumentation, MethodSeparator, TwoEmptyLines } from './methodDoc';
 import { MultiLineDeclare } from './multiLineDeclare';
@@ -24,6 +20,9 @@ import { MethodParametersOnNewLine } from './parameters';
 import { RuntimeStart } from './runtime';
 import { TblColDocumentation } from './tblcolDoc';
 import { TodoInfo } from './todos';
+
+type RuleCtor<T> = new (profileComponent: ProfileComponent) => T;
+type PslRuleCtor<T> = new (profileComponent: ProfileComponent, parsedDocument: ParsedDocument) => T;
 
 const componentRuleConstructors: RuleCtor<ProfileComponentRule>[] = [];
 const fileDefinitionRuleConstructors: RuleCtor<FileDefinitionRule>[] = [
@@ -82,20 +81,19 @@ class RuleSubscription {
 	constructor(private profileComponent: ProfileComponent, private parsedDocument?: ParsedDocument, useConfig?: boolean) {
 		const config = useConfig ? getConfig(this.profileComponent.fsPath) : undefined;
 
-		const filterRule = (ruleCtor: RuleCtor<ProfileComponentRule> | PslRuleCtor<PslRule>) => {
+		const filterByConfig = (ruleCtor: RuleCtor<ProfileComponentRule> | PslRuleCtor<PslRule>) => {
 			if (!useConfig) return true;
 			if (!config) return false;
 			return matchConfig(path.basename(this.profileComponent.fsPath), ruleCtor.name, config);
 		};
 		const initializeRules = (ruleCtors: RuleCtor<ProfileComponentRule>[]) => {
-			return ruleCtors.filter(filterRule).map(ruleCtor => {
+			return ruleCtors.filter(filterByConfig).map(ruleCtor => {
 				return new ruleCtor(this.profileComponent);
 			});
 		};
 		const initializePslRules = (ruleCtors: PslRuleCtor<PslRule>[]) => {
-			return ruleCtors.filter(filterRule).map(ruleCtor => {
-				const pslParsedDocument = this.parsedDocument as ParsedDocument;
-				return new ruleCtor(this.profileComponent, pslParsedDocument);
+			return ruleCtors.filter(filterByConfig).map(ruleCtor => {
+				return new ruleCtor(this.profileComponent, this.parsedDocument as ParsedDocument);
 			});
 		};
 
