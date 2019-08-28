@@ -173,6 +173,11 @@
     },
     "commands": [
       {
+        "command": "psl.goToMumps",
+        "title": "Go To Mumps",
+        "category": "PSL"
+      },
+      {
         "command": "psl.setGtmDebug",
         "title": "Set GT.M Debug",
         "category": "PSL"

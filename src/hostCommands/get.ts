@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as environment from '../common/environment';
 import { MumpsVirtualDocument } from '../language/mumps';
+import { WorkspaceFile } from '../common/environment';
 
 const icon = utils.icons.GET;
 
@@ -110,60 +111,39 @@ export async function getTableHandler(context: utils.ExtensionCommandContext) {
 }
 
 export async function getCompiledCodeHandler(context: utils.ExtensionCommandContext): Promise<void> {
-	let c = utils.getFullContext(context);
-	if (c.mode === utils.ContextMode.FILE) {
-		return getCompiledCode(c.fsPath).catch(() => {});
-	}
-	else if (c.mode === utils.ContextMode.DIRECTORY) {
-		let files = await vscode.window.showOpenDialog({defaultUri: vscode.Uri.file(c.fsPath), canSelectMany: true, openLabel: 'Refresh'})
-		if (!files) return;
-		for (let fsPath of files.map(file => file.fsPath)) {
-			await getCompiledCode(fsPath).catch(() => {});
-		}
-	}
-	else {
-		let quickPick = await environment.workspaceQuickPick();
-		if (!quickPick) return;
-		let chosenEnv = quickPick;
-		let files = await vscode.window.showOpenDialog({defaultUri: vscode.Uri.file(chosenEnv.fsPath), canSelectMany: true, openLabel: 'Refresh'})
-		if (!files) return;
-		for (let fsPath of files.map(file => file.fsPath)) {
-			await getCompiledCode(fsPath).catch(() => {})
-		}
-	}
-	return;
+	return getCompiledCode(utils.getFullContext(context).fsPath).catch(() => {});
 }
 
-async function getCompiledCode(fsPath: string) {
-	if (!fs.statSync(fsPath).isFile()) return;
+export async function getCompiledCode(fileName: string) {
 	let env: environment.EnvironmentConfig;
-	const routineName = `${path.basename(fsPath).split('.')[0]}.m`;
-	return utils.executeWithProgress(`${icon} ${path.basename(fsPath)} GET`, async () => {
-		let envs;
+	const routineName = `${path.basename(fileName).split('.')[0]}`;
+	const baseName = `${routineName}.m`;
+	return utils.executeWithProgress(`${icon} ${baseName} GET`, async () => {
+		let environments: environment.EnvironmentConfig[];
 		try {
-			envs = await utils.getEnvironment(fsPath);
+			environments = await utils.getEnvironment(fileName);
 		}
 		catch (e) {
-			utils.logger.error(`${utils.icons.ERROR} ${icon} Invalid environment configuration.`);
-			return;
+			const quickPick = await environment.workspaceQuickPick();
+			if (!quickPick) return;
+			const workspaceFile = new WorkspaceFile(quickPick.fsPath);
+			environments = await workspaceFile.environmentObjects;
 		}
-		if (envs.length === 0) {
+		if (environments.length === 0) {
 			utils.logger.error(`${utils.icons.ERROR} ${icon} No environments selected.`);
 			return;
 		}
-		let choice = await utils.getCommandenvConfigQuickPick(envs);
+		let choice = await utils.getCommandenvConfigQuickPick(environments);
 		if (!choice) return;
 		env = choice;
-		utils.logger.info(`${utils.icons.WAIT} ${icon} ${routineName} GET COMPILED from ${env.name}`);
-		let doc = await vscode.workspace.openTextDocument(fsPath);
-		await doc.save();
+		utils.logger.info(`${utils.icons.WAIT} ${icon} ${baseName} GET COMPILED from ${env.name}`);
 		let connection = await utils.getConnection(env);
-		let output = await connection.get(routineName);
-		const uri = vscode.Uri.parse(`${MumpsVirtualDocument.schemes.compiled}:/${env.name}/${routineName}`);
+		let output = await connection.get(baseName);
+		const uri = vscode.Uri.parse(`${MumpsVirtualDocument.schemes.compiled}:/${env.name}/${baseName}`);
 		const virtualDocument = new MumpsVirtualDocument(routineName, output, uri);
-		utils.logger.info(`${utils.icons.SUCCESS} ${icon} ${routineName} GET COMPILED from ${env.name} succeeded`);
+		utils.logger.info(`${utils.icons.SUCCESS} ${icon} ${baseName} GET COMPILED from ${env.name} succeeded`);
 		connection.close();
-		vscode.window.showTextDocument(virtualDocument.uri, {preview: false});
+		await vscode.window.showTextDocument(virtualDocument.uri, {preview: false});
 	}).catch((e: Error) => {
 		if (env && env.name) {
 			utils.logger.error(`${utils.icons.ERROR} ${icon} error in ${env.name} ${e.message}`);

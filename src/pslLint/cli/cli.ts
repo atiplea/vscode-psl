@@ -62,7 +62,7 @@ class Linter {
 
 	private async readPath(fileString: string): Promise<void> {
 		const files = fileString.split(';').filter(x => x);
-		const promises: Array<Promise<any>> = [];
+		const promises = [];
 		for (const filePath of files) {
 			const absolutePath = path.resolve(filePath);
 			if (!absolutePath) continue;

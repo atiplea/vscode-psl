@@ -4,7 +4,7 @@ import { BATCH_MODE, DATA_MODE, PSL_MODE, TRIG_MODE } from '../extension';
 
 import * as codeQuality from './codeQuality';
 import { DataDocumentHighlightProvider, DataHoverProvider } from './dataItem';
-import { MumpsDocumentProvider, MumpsVirtualDocument } from './mumps';
+import { MumpsDocumentProvider, MumpsVirtualDocument, goToMumps } from './mumps';
 import * as previewDocumentation from './previewDocumentation';
 import { PSLDefinitionProvider } from './pslDefinitionProvider';
 import { MumpsDocumentSymbolProvider, PSLDocumentSymbolProvider } from './pslDocument';
@@ -71,6 +71,10 @@ export async function activate(context: vscode.ExtensionContext) {
 			),
 		);
 	});
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('psl.goToMumps', goToMumps),
+	);
 
 	codeQuality.activate(context);
 
