@@ -185,6 +185,8 @@ export interface ParsedDocument {
 	 * The tokens corresponding to line and block comments.
 	 */
 	comments: Token[];
+
+	statements?: Statement[];
 }
 
 // tslint:disable-next-line:class-name
@@ -270,6 +272,7 @@ class Parser {
 	private methods: _Method[];
 	private properties: Property[];
 	private declarations: Declaration[];
+	private statements: Statement[];
 	private activeMethod: _Method;
 	private activeProperty: Property;
 	private tokens: Token[];
@@ -281,6 +284,7 @@ class Parser {
 		this.methods = [];
 		this.properties = [];
 		this.declarations = [];
+		this.statements = [];
 		this.tokens = [];
 		this.comments = [];
 		if (tokenizer) this.tokenizer = tokenizer;
@@ -319,6 +323,7 @@ class Parser {
 				}
 				const statements = this.parseStatementsOnLine(tokenBuffer);
 				if (statements && this.activeMethod) this.activeMethod.statements = this.activeMethod.statements.concat(statements);
+				else if (statements) this.statements = this.statements.concat(statements);
 				if (this.activeProperty && this.activeProperty.id.position.line + 1 === lineNumber) {
 					const documentation = this.checkForDocumentation(tokenBuffer);
 					if (documentation) this.activeProperty.documentation = documentation;
@@ -337,6 +342,7 @@ class Parser {
 			extending: this.extending,
 			pslPackage: this.pslPackage,
 			methods: this.methods,
+			statements: this.statements,
 			properties: this.properties,
 			tokens: this.tokens,
 		};

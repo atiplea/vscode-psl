@@ -17,6 +17,7 @@ import {
 import { MethodDocumentation, MethodSeparator, TwoEmptyLines } from './methodDoc';
 import { MultiLineDeclare } from './multiLineDeclare';
 import { MethodParametersOnNewLine } from './parameters';
+import { ObjectArgument } from './reassign';
 import { RuntimeStart } from './runtime';
 import { TblColDocumentation } from './tblcolDoc';
 import { TodoInfo } from './todos';
@@ -31,6 +32,7 @@ const fileDefinitionRuleConstructors: RuleCtor<FileDefinitionRule>[] = [
 const pslRuleConstructors: PslRuleCtor<PslRule>[] = [
 	TodoInfo,
 	RedundantDoBlock,
+	ObjectArgument,
 ];
 const memberRuleConstructors: PslRuleCtor<MemberRule>[] = [
 	MemberCamelCase,
