@@ -8,7 +8,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const provider = new GtmConfigurationProvider();
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('gtm', provider));
 
-	// The following use of a DebugAdapter factory shows how to run the debug adapter inside the extension host (and not as a separate process).
+	// run the debug adapter inside the extension host (and not as a separate process).
 	const factory = new GtmDebugAdapterDescriptorFactory();
 	context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('gtm', factory));
 	context.subscriptions.push(factory);
@@ -21,38 +21,43 @@ export function deactivate() {
 }
 
 async function chooseMumpsRoutine(context: vscode.ExtensionContext) {
-	const storageKey = 'gtm.chosenRoutines';
-	const currentRoutine = pathParse(vscode.window.activeTextEditor?.document.fileName || '').name;
-	const chosenRoutines = context.globalState.get<string[]>(storageKey, []);
-	const activeRoutines = vscode.workspace.textDocuments.filter(t => ['.m', '.psl', '.proc', '.batch'].includes(extname(t.fileName).toLowerCase())).map(t => pathParse(t.fileName).name).filter(t => t !== currentRoutine && !chosenRoutines.includes(t));
+	const isRoutine = (fileName: string) => ['.m', '.psl', '.proc', '.batch'].includes(extname(fileName).toLowerCase());
+	const uniqueAndDefined = (v: string, i: number, a: string[]) => v && a.indexOf(v) === i;
+
+	const storageKey = 'gtm.recentlyChosen';
+	const activeFilePath = vscode.window.activeTextEditor?.document.fileName;
+
+	const activeRoutine = isRoutine(activeFilePath || '') ? pathParse(activeFilePath as string).name : '';
+	const recentlyChosen = context.globalState.get<string[]>(storageKey, []);
+	const openRoutines = vscode.workspace.textDocuments.filter(t => isRoutine(t.fileName)).map(t => pathParse(t.fileName).name);
+
 	const choice = await vscode.window.showQuickPick(
 		[
 			{
-				label: currentRoutine,
+				label: activeRoutine,
 				description: '*',
 				detail: 'Active routine'
 			},
-			...chosenRoutines.map(t => {
+			...recentlyChosen.map(t => {
 				return {
 					label: t,
 					detail: 'Recently chosen',
 				}
 			}),
-			...activeRoutines.map(t => {
+			...openRoutines.map(t => {
 				return {
 					label: t,
 					detail: 'Open routine',
 				}
 			})
-		],
+		].filter((v, i, a) => uniqueAndDefined(v.label, i, a.map(x => x.label))),
 		{
 			placeHolder: 'Choose a routine',
 		}
 	);
 	if (!choice) { return; }
-	chosenRoutines.push(choice.label);
-	const unique = (array: string[]) => [...new Set(array)];
-	const lastThreeChoices: string[] = unique(chosenRoutines.reverse()).slice(0, 3);
+	recentlyChosen.push(choice.label);
+	const lastThreeChoices: string[] = recentlyChosen.reverse().filter(uniqueAndDefined).slice(0, 3);
 	context.globalState.update(storageKey, lastThreeChoices);
 	return choice.label;
 }

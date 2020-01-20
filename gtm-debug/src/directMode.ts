@@ -75,9 +75,10 @@ export class DirectMode {
 	}
 
 	listen(): void {
+		const delimiter = new RegExp(`^${DirectMode.zPrompt}\n?$`, 'gm');
 		this.stdout.subscribe(out => {
 			this.outputBuffer += out;
-			const pieces = this.outputBuffer.split(new RegExp(`^${DirectMode.zPrompt}\n?$`, 'gm'));
+			const pieces = this.outputBuffer.split(delimiter);
 			for (const response of pieces.slice(0, -1)) {
 				this.responsesSubject.next(response.trimLeft());
 			}
@@ -90,7 +91,7 @@ export class DirectMode {
 					return;
 				}
 			}
-		})
+		});
 	}
 
 	static escapeMumps(msg: string) {

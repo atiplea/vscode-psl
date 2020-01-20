@@ -1,7 +1,3 @@
-/*---------------------------------------------------------
- * Copyright (C) Microsoft Corporation. All rights reserved.
- *--------------------------------------------------------*/
-
 import {
 	Logger, logger,
 	LoggingDebugSession,
@@ -12,7 +8,7 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 import { DirectMode } from './directMode';
 import { Observable, forkJoin, of } from 'rxjs';
 import { map } from 'rxjs/operators';
-const { Subject } = require('await-notify');
+import { Subject } from 'await-notify';
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -24,7 +20,6 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
 	command: string;
 	args: string[];
 	run?: string;
-	breakpoints?: string[];
 }
 
 export class GtmDebugSession extends LoggingDebugSession {
@@ -34,20 +29,22 @@ export class GtmDebugSession extends LoggingDebugSession {
 
 	private directMode!: DirectMode;
 
-	private variableHandles = new Handles<string>();
 	private configurationDone = new Subject();
 
-	private sources = new Map<string, { sourceCode: string, source: Source }>();
+	private variableHandles = new Handles<string>();
+	private globalVariableReference: number = this.variableHandles.create('global');
+
 	private functionBreakpoints: DebugProtocol.FunctionBreakpoint[] = [];
 	private sourceBreakpoints = new Map<string, DebugProtocol.Breakpoint[]>();
-	private globalVariableReference: number = this.variableHandles.create("global");
+
+	private sources = new Map<string, { sourceCode: string, source: Source }>();
 
 	/**
 	 * Creates a new debug adapter that is used for one debug session.
 	 * We configure the default implementation of a debug adapter here.
 	 */
 	public constructor() {
-		super("mock-debug.txt");
+		super('mock-debug.txt');
 
 		// this debugger uses zero-based lines and columns
 		this.setDebuggerLinesStartAt1(false);
@@ -105,13 +102,11 @@ export class GtmDebugSession extends LoggingDebugSession {
 		});
 
 		this.sendEvent(new InitializedEvent());
+		this.sendResponse(response);
 
 		// wait until configuration has finished (and configurationDoneRequest has been called)
-		await this.configurationDone.wait(1000);
+		await this.configurationDone.wait();
 
-		if (args.breakpoints) {
-			args.breakpoints.forEach(b => this.directMode.setBreakPoint(b).subscribe());
-		}
 		if (args.run) {
 			this.sendEvent(new OutputEvent(args.run, 'console'));
 			this.directMode.execute(args.run).subscribe(output => {
@@ -119,21 +114,21 @@ export class GtmDebugSession extends LoggingDebugSession {
 			});
 		}
 
-		this.sendResponse(response);
 	}
 
 	protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
 		// runtime supports no threads so just return a default thread.
 		response.body = {
 			threads: [
-				new Thread(GtmDebugSession.THREAD_ID, "thread 1"),
+				new Thread(GtmDebugSession.THREAD_ID, 'thread 1'),
 			]
 		};
 		this.sendResponse(response);
 	}
 
 	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments): void {
-		if (!args.source?.name || !args.breakpoints) {
+		if (!args.source?.name || !args.breakpoints?.length) {
+			response.body = { breakpoints: [] }
 			this.sendResponse(response);
 			return;
 		}
@@ -144,6 +139,7 @@ export class GtmDebugSession extends LoggingDebugSession {
 		const routineName = args.source.name.replace('.m', '');
 
 		if (breakpointsForSource) {
+			// clear source break points
 			breakpointsForSource.forEach(breakpoint => {
 				const location = `+${breakpoint.line}^${routineName}`;
 				this.directMode.setBreakPoint(`-${location}`).subscribe();
@@ -152,7 +148,7 @@ export class GtmDebugSession extends LoggingDebugSession {
 
 		this.createSource(`^${routineName}`).subscribe(source => {
 			const verifiedBreakpoints: DebugProtocol.Breakpoint[] = breakpoints.map(breakpoint => {
-				const location = `+${breakpoint.line}^${routineName}`;
+			const location = `+${breakpoint.line}^${routineName}`;
 				this.directMode.setBreakPoint(location).subscribe();
 				return { ...breakpoint, verified: true, source: source.source }
 			});
@@ -165,10 +161,12 @@ export class GtmDebugSession extends LoggingDebugSession {
 	}
 
 	protected setFunctionBreakPointsRequest(response: DebugProtocol.SetFunctionBreakpointsResponse, args: DebugProtocol.SetFunctionBreakpointsArguments) {
+		// clear function break points
 		this.functionBreakpoints.forEach(breakpoint => {
 			this.directMode.setBreakPoint(`-${breakpoint.name}`).subscribe();
 		});
-		if (!args.breakpoints) {
+		if (!args.breakpoints.length) {
+			response.body = { breakpoints: [] }
 			this.sendResponse(response);
 			return;
 		}
@@ -196,7 +194,11 @@ export class GtmDebugSession extends LoggingDebugSession {
 					return this.createSource(location);
 				})).subscribe(sources => {
 					const stackFrames = sources.map((sourced, i) => {
-						return new StackFrame(i, sourced.location, sourced.source, sourced.documentLineNumber);
+						const stackFrame: DebugProtocol.StackFrame = new StackFrame(i, sourced.location, sourced.source, sourced.documentLineNumber);
+						if (sourced.location.includes('^vFwkGtm')) {
+							stackFrame.presentationHint = 'subtle';
+						}
+						return stackFrame;
 					})
 					response.body = {
 						stackFrames,
@@ -239,7 +241,7 @@ export class GtmDebugSession extends LoggingDebugSession {
 	protected scopesRequest(response: DebugProtocol.ScopesResponse): void {
 		response.body = {
 			scopes: [
-				new Scope("Global", this.globalVariableReference, false),
+				new Scope('Global', this.globalVariableReference, false),
 			]
 		};
 		this.sendResponse(response);
@@ -248,34 +250,34 @@ export class GtmDebugSession extends LoggingDebugSession {
 	protected variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments) {
 		const id = this.variableHandles.get(args.variablesReference);
 		const variables: DebugProtocol.Variable[] = [];
-		const noded: string[] = [];
 		if (args.variablesReference === this.globalVariableReference) {
-			this.directMode.zWrite().subscribe(variableOutput => {
-				variableOutput.split('\n').forEach(v => {
-					if (!v) { return; }
-					const variable = this.loadVariable(v);
-					if (variable.node && !noded.includes(variable.name)) {
-						const variablesReference = this.variableHandles.create(variable.name);
-						const toUpdate = variables.find(v => v.name === variable.name);
-						if (toUpdate) {
-							toUpdate.variablesReference = variablesReference;
-						}
-						else {
+			this.directMode.zWrite().subscribe(zwriteOutput => {
+				zwriteOutput.split('\n').forEach(line => {
+					if (!line || line.startsWith('$ZWRTAC')) { return; }
+					const previousVariable: DebugProtocol.Variable | undefined = variables[variables.length - 1];
+					const mumpsVariable = this.parseZwriteLine(line);
+
+					if (mumpsVariable.node) {
+						const isNewVariable = previousVariable?.name !== mumpsVariable.name;
+						if (isNewVariable) {
 							variables.push({
-								name: variable.name,
-								evaluateName: `WRITE $G(${variable.name})`,
-								variablesReference,
+								evaluateName: `WRITE $G(${mumpsVariable.name})`,
+								name: mumpsVariable.name,
 								value: 'Tree',
+								variablesReference: this.variableHandles.create(mumpsVariable.name),
 							});
 						}
-						noded.push(variable.name);
+						else if (!previousVariable?.variablesReference) {
+							previousVariable.variablesReference = this.variableHandles.create(mumpsVariable.name);
+						}
+
 					}
-					else if (!variable.node) {
+					else {
 						variables.push({
-							name: variable.name,
-							evaluateName: `WRITE $G(${variable.name})`,
+							evaluateName: `WRITE $G(${mumpsVariable.name})`,
+							name: mumpsVariable.name,
+							value: mumpsVariable.value,
 							variablesReference: 0,
-							value: variable.value,
 						});
 					}
 				});
@@ -288,15 +290,16 @@ export class GtmDebugSession extends LoggingDebugSession {
 			});
 		}
 		else if (id) {
-			this.directMode.zWrite(id.replace('*', '')).subscribe(variableOutput => {
-				variableOutput.split('\n').forEach(v => {
-					if (!v) { return; }
-					const variable = this.loadVariable(v);
-					if (variable.node) {
+			this.directMode.zWrite(id.replace('*', '')).subscribe(zwriteOutput => {
+				zwriteOutput.split('\n').forEach(line => {
+					if (!line || line.startsWith('$ZWRTAC')) { return; }
+					const mumpsVariable = this.parseZwriteLine(line);
+					if (mumpsVariable.node) {
 						variables.push({
-							name: variable.node,
+							evaluateName: `WRITE $G(${mumpsVariable.name}${mumpsVariable.node})`,
+							name: mumpsVariable.node,
+							value: mumpsVariable.value,
 							variablesReference: 0,
-							value: variable.value,
 						});
 					}
 				});
@@ -317,7 +320,7 @@ export class GtmDebugSession extends LoggingDebugSession {
 		this.sendResponse(response);
 	}
 
-	private loadVariable(zWriteLine: string): MumpsVariable {
+	private parseZwriteLine(zWriteLine: string): MumpsVariable {
 		const left = zWriteLine.split('=')[0];
 		const leftParen = left.indexOf('(');
 		if (leftParen === -1) {
