@@ -56,6 +56,12 @@
 				"language": "mumps"
 			}
 		],
+		"commands": [
+			{
+				"command": "gtm.pickRoutine",
+				"title": "Choose mumps routine"
+			}
+		],
 		"debuggers": [
 			{
 				"type": "gtm",
