@@ -34,7 +34,7 @@ export class GtmDebugSession extends LoggingDebugSession {
 	private variableHandles = new Handles<string>();
 	private globalVariableReference: number = this.variableHandles.create('global');
 
-	private functionBreakpoints: DebugProtocol.FunctionBreakpoint[] = [];
+	private functionBreakpoints: (DebugProtocol.FunctionBreakpoint & { verified: boolean })[] = [];
 	private sourceBreakpoints = new Map<string, DebugProtocol.Breakpoint[]>();
 
 	private sources = new Map<string, { sourceCode: string, source: Source }>();
@@ -66,6 +66,9 @@ export class GtmDebugSession extends LoggingDebugSession {
 		response.body.supportsFunctionBreakpoints = true;
 
 		response.body.supportsLoadedSourcesRequest = true;
+
+		response.body.supportsCompletionsRequest = true;
+		response.body.completionTriggerCharacters = ["."];
 
 		this.sendResponse(response);
 	}
@@ -148,7 +151,7 @@ export class GtmDebugSession extends LoggingDebugSession {
 
 		this.createSource(`^${routineName}`).subscribe(source => {
 			const verifiedBreakpoints: DebugProtocol.Breakpoint[] = breakpoints.map(breakpoint => {
-			const location = `+${breakpoint.line}^${routineName}`;
+				const location = `+${breakpoint.line}^${routineName}`;
 				this.directMode.setBreakPoint(location).subscribe();
 				return { ...breakpoint, verified: true, source: source.source }
 			});
@@ -180,7 +183,7 @@ export class GtmDebugSession extends LoggingDebugSession {
 			});
 			this.functionBreakpoints = verifiedBreakpoints;
 			response.body = {
-				breakpoints: this.functionBreakpoints
+				breakpoints: this.functionBreakpoints.map(b => ({ ...b, verified: true })),
 			}
 			this.sendResponse(response);
 		});
@@ -340,31 +343,31 @@ export class GtmDebugSession extends LoggingDebugSession {
 
 	protected continueRequest(response: DebugProtocol.ContinueResponse): void {
 		this.directMode.zContinue().subscribe(output => {
-			this.sendEvent(new OutputEvent(output, 'stdout'));
+			if (output.trim()) { this.sendEvent(new OutputEvent(output, 'stdout')); }
 			this.sendEvent(new StoppedEvent('breakpoint', GtmDebugSession.THREAD_ID));
-		})
-		response.body = { allThreadsContinued: true }
+		});
+		response.body = { allThreadsContinued: true };
 		this.sendResponse(response);
 	}
 
 	protected nextRequest(response: DebugProtocol.NextResponse): void {
 		this.directMode.zStep('OVER').subscribe(output => {
-			this.sendEvent(new OutputEvent(output, 'stdout'));
-		})
+			if (output.trim()) { this.sendEvent(new OutputEvent(output, 'stdout')); }
+		});
 		this.sendResponse(response);
 	}
 
 	protected stepInRequest(response: DebugProtocol.StepInResponse): void {
 		this.directMode.zStep('INTO').subscribe(output => {
-			this.sendEvent(new OutputEvent(output, 'stdout'));
-		})
+			if (output.trim()) { this.sendEvent(new OutputEvent(output, 'stdout')); }
+		});
 		this.sendResponse(response);
 	}
 
 	protected stepOutRequest(response: DebugProtocol.StepOutResponse): void {
 		this.directMode.zStep('OUTOF').subscribe(output => {
-			this.sendEvent(new OutputEvent(output, 'stdout'));
-		})
+			if (output.trim()) { this.sendEvent(new OutputEvent(output, 'stdout')); }
+		});
 		this.sendResponse(response);
 	}
 
@@ -390,6 +393,13 @@ export class GtmDebugSession extends LoggingDebugSession {
 		}
 	}
 
+	protected completionsRequest(response: DebugProtocol.CompletionsResponse, args: DebugProtocol.CompletionsArguments, request?: DebugProtocol.Request): void {
+		response.body = {
+			targets: [],
+		};
+		this.sendResponse(response);
+	}
+
 	private createSource(location: string): Observable<Sourced> {
 		const [, label, line, routineName] = (/(%?\w+)?\+?(\d+)?\^(%?\w+(\+\d+)?)/).exec(location) as RegExpExecArray;
 		if (!this.sources.has(routineName)) {
@@ -406,7 +416,7 @@ export class GtmDebugSession extends LoggingDebugSession {
 						location,
 					}
 				})
-			)
+			);
 		}
 		else {
 			const source = this.sources.get(routineName) as { sourceCode: string, source: Source };

@@ -63,7 +63,7 @@ export class RuntimeStart extends MethodRule {
 				variables = new Map();
 				acceptVariables = this.addToWhitelist(runtimeMethod);
 			}
-			else if (runtimeMethod.id.value === 'commit') {
+			else if (runtimeMethod.id.value === 'commit' || runtimeMethod.id.value === 'rollback') {
 				if (!lastStart) continue;
 				else {
 					const startLine = lastStart.id.position.line;

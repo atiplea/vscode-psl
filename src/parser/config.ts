@@ -55,7 +55,7 @@ export interface FinderPaths {
 
 export function getFinderPaths(currentDir: string, activeRoutine?: string): FinderPaths {
 
-	const defaultPslSources = ['dataqwik/procedure/', 'psl/'];
+	const defaultPslSources = ['dataqwik/procedure/', 'psl/*/'];
 	const defaultFileDefinitionSources = ['dataqwik/table/'];
 
 	const config: ProjectConfig | undefined = activeConfigs.get(currentDir);

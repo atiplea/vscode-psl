@@ -86,7 +86,7 @@ export class DirectMode {
 		});
 		this.stderr.subscribe(out => {
 			for (const header of this.headers) {
-				if (out.includes(header)) {
+				if (out.includes(DirectMode.escapeMumps(header))) {
 					this.responsesSubject.next(header);
 					return;
 				}
